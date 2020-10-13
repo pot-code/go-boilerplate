@@ -1,0 +1,10 @@
+.vscode
+*.log
+modd.conf
+.editorconfig
+Dockerfile
+app
+.DS_Store
+.gitignore
+skaffold.yaml
+k8s-pod.yaml

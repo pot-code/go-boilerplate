@@ -1,0 +1,120 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+spec:
+  clusterIP: None # headless service
+  selector:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+  ports:
+    - port: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/component: cache
+  serviceName: redis-svc
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+        app.kubernetes.io/component: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:6.0.8
+          args: ['--requirepass', '$(REDIS_PASS)']
+          resources:
+            requests:
+              memory: '128Mi'
+              cpu: '500m'
+          env:
+            - name: REDIS_PASS
+              valueFrom:
+                secretKeyRef:
+                  key: kv_password
+                  name: go-boilerplate-secret
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - mountPath: /data
+              subPath: redis
+              name: data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 20Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-svc
+spec:
+  clusterIP: None # headless service
+  selector:
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/component: database
+  ports:
+    - port: 3306
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mysql
+      app.kubernetes.io/component: database
+  serviceName: mysql-svc
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mysql
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: go-boilerplate-db
+          image: mysql:8.0
+          env:
+            - name: MYSQL_DATABASE
+              value: go_boilerplate
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: go-boilerplate-secret
+                  key: db_password
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '500Mi'
+            limits:
+              cpu: '1'
+              memory: '1G'
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              subPath: mysql
+              name: data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 128Mi

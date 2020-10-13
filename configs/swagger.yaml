@@ -1,0 +1,113 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: go-clean-arch
+  description: A demo to show the <strong>possibility</strong> of working with go-clean-arch
+servers:
+  - url: 'http://localhost:8081'
+paths:
+  /api/v1/user/exists:
+    get:
+      tags:
+        - user
+      description: check if user is already registered
+      operationId: HandleUserExistence
+      # security:
+      #   - ApiKeyAuth: []
+      parameters:
+        - name: username
+          in: query
+          schema:
+            type: string
+            example: example-user
+        - name: email
+          in: query
+          schema:
+            type: string
+            format: 'email'
+            example: demo-email@google.com
+      responses:
+        200:
+          description: true is for registered state
+          content:
+            application/json:
+              schema:
+                type: boolean
+                example: true
+        400:
+          description: some parameters are invalid
+          content:
+            application/json+problem:
+              schema:
+                $ref: '#/components/schemas/RESTValidationError'
+        500:
+          description: server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RESTStandardError'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: auth_token
+  schemas:
+    RESTStandardError:
+      type: object
+      required:
+        - code
+        - title
+      properties:
+        type:
+          type: string
+          description: error type link
+          example: RESTStandardError
+        code:
+          type: integer
+          description: HTTP status code
+          example: 400
+        title:
+          type: string
+          example: example title
+        detail:
+          type: string
+          description: detailed info of error
+    FieldError:
+      type: object
+      required:
+        - domain
+        - reason
+      properties:
+        domain:
+          type: string
+          description: field name
+          example: username
+        reason:
+          type: string
+          description: the reason why validation failed
+          example: field is required
+    RESTValidationError:
+      type: object
+      required:
+        - code
+        - title
+      properties:
+        type:
+          type: string
+          description: error type link
+          example: RESTStandardError
+        code:
+          type: integer
+          description: HTTP status code
+          example: 400
+        title:
+          type: string
+          example: example title
+        detail:
+          type: string
+          description: detailed info of error
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'

@@ -1,0 +1,120 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+      - type: log
+        enabled: true
+        paths:
+          - /var/log/app/*.log
+        json.keys_under_root: true
+        json.add_error_key: true
+        json.message_key: message
+        json.overwrite_keys: true
+
+    logging.metrics.enabled: false
+    output.elasticsearch:
+      hosts: ['${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}']
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: go-boilerplate-backend
+  labels:
+    app.kubernetes.io/name: go-boilerplate
+    app.kubernetes.io/component: backend
+spec:
+  hostAliases:
+    - ip: '192.168.65.2'
+      hostnames:
+        - 'host.minikube.internal'
+  containers:
+    - name: go-boilerplate-backend
+      image: potdockercode/go-boilerplate-backend
+      resources:
+        requests:
+          memory: '128Mi'
+          cpu: '500m'
+      ports:
+        - containerPort: 8081
+      env:
+        - name: GOAPP_SECURITY_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: go-boilerplate-secret
+              key: jwt_secret
+        - name: GOAPP_SECURITY_TOKEN_NAME
+          value: auth_token
+        - name: GOAPP_DATABASE_USERNAME
+          value: root
+        - name: GOAPP_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: go-boilerplate-secret
+              key: db_password
+        - name: GOAPP_DATABASE_SCHEMA
+          value: go_boilerplate
+        - name: GOAPP_DATABASE_PROTOCOL
+          value: tcp
+        - name: GOAPP_DATABASE_QUERY
+          value: parseTime=true
+        - name: GOAPP_DATABASE_HOST
+          value: mysql-svc
+        - name: GOAPP_KV_HOST
+          value: redis-svc
+        - name: GOAPP_KV_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: go-boilerplate-secret
+              key: kv_password
+        - name: GOAPP_APP_ID
+          value: go-boilerplate
+        - name: GOAPP_ENV
+          value: production
+        - name: GOAPP_LOGGING_FILE_PATH
+          value: /var/log/app/app.log
+        - name: GOAPP_LOGGING_LEVEL
+          value: info
+      volumeMounts:
+        - mountPath: /var/log/app
+          name: log
+    - name: filebeat
+      image: elastic/filebeat:7.9.2
+      resources:
+        requests:
+          memory: '128Mi'
+          cpu: '500m'
+      args: ['-c', '/etc/filebeat.yml', '-e']
+      env:
+        - name: ELASTICSEARCH_HOST
+          value: host.minikube.internal
+        - name: ELASTICSEARCH_PORT
+          value: '9200'
+      volumeMounts:
+        - mountPath: /etc/filebeat.yml
+          name: filebeat-config
+          subPath: filebeat.yml
+          readOnly: true
+        - mountPath: /var/log/app
+          name: log
+          readOnly: true
+    - name: logrotate-es
+      image: blacklabelops/logrotate
+      env:
+        - name: LOGROTATE_SIZE
+          value: 10M
+        - name: LOGS_DIRECTORIES
+          value: /logs
+      volumeMounts:
+        - name: log
+          mountPath: /logs
+  volumes:
+    - name: filebeat-config
+      configMap:
+        defaultMode: 0640
+        name: filebeat-config
+    - name: log
+      emptyDir: {}

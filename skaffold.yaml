@@ -1,0 +1,16 @@
+apiVersion: skaffold/v2beta8
+kind: Config
+metadata:
+  name: backend
+build:
+  artifacts:
+    - image: potdockercode/go-boilerplate-backend
+deploy:
+  kubectl:
+    manifests:
+      - k8s-pod.yaml
+      - k8s-svc.yaml
+portForward:
+  - resourceType: Pod
+    resourceName: go-boilerplate-backend
+    port: 8081
