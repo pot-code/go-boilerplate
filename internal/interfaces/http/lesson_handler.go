@@ -5,15 +5,15 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/pot-code/go-boilerplate/internal/domain"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 )
 
 type LessonHandler struct {
 	LessonUseCase domain.LessonUseCase
-	JWTUtil       *infra.JWTUtil
+	JWTUtil       *auth.JWTUtil
 }
 
-func NewLessonHandler(LessonUseCase domain.LessonUseCase, JWTUtil *infra.JWTUtil) *LessonHandler {
+func NewLessonHandler(LessonUseCase domain.LessonUseCase, JWTUtil *auth.JWTUtil) *LessonHandler {
 	handler := &LessonHandler{
 		LessonUseCase: LessonUseCase,
 		JWTUtil:       JWTUtil,

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 )
 
 // ValidateTokenOption ...
@@ -19,7 +19,7 @@ type RefreshTokenOption struct {
 }
 
 // VerifyToken validate JWT
-func VerifyToken(ju *infra.JWTUtil, options ...*ValidateTokenOption) echo.MiddlewareFunc {
+func VerifyToken(ju *auth.JWTUtil, options ...*ValidateTokenOption) echo.MiddlewareFunc {
 	inBlacklist := func(string) (bool, error) { return true, nil }
 	if len(options) > 0 {
 		option := options[0]
@@ -49,7 +49,7 @@ func VerifyToken(ju *infra.JWTUtil, options ...*ValidateTokenOption) echo.Middle
 }
 
 // RefreshToken refresh jwt if necessary, must be chained after ValidateMiddleware
-func RefreshToken(ju *infra.JWTUtil, options ...*RefreshTokenOption) echo.MiddlewareFunc {
+func RefreshToken(ju *auth.JWTUtil, options ...*RefreshTokenOption) echo.MiddlewareFunc {
 	threshold := 5 * time.Minute
 	if len(options) > 0 {
 		if option := options[0]; option.Threshold > 0 {

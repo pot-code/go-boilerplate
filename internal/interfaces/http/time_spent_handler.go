@@ -8,17 +8,18 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/pot-code/go-boilerplate/internal/domain"
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 )
 
 type TimeSpentHandler struct {
 	TimeSpentUseCase domain.TimeSpentUseCase
 	Validator        infra.Validator
-	JWTUtil          *infra.JWTUtil
+	JWTUtil          *auth.JWTUtil
 }
 
 func NewTimeSpentHandler(
 	TimeSpentUseCase domain.TimeSpentUseCase,
-	JWTUtil *infra.JWTUtil,
+	JWTUtil *auth.JWTUtil,
 	Validator infra.Validator,
 ) *TimeSpentHandler {
 	handler := &TimeSpentHandler{

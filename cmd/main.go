@@ -10,6 +10,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
 	repo "github.com/pot-code/go-boilerplate/internal/infrastructure/repository"
 	ihttp "github.com/pot-code/go-boilerplate/internal/interfaces/http"
@@ -60,7 +61,7 @@ func httpServer(option *AppConfig) {
 	}
 
 	rdb := driver.NewRedisClient(option.KVStore.Host, option.KVStore.Port, option.KVStore.Password)
-	jwtUtil := infra.NewJWTUtil(option.Security.JWTMethod, option.Security.JWTSecret, option.Security.TokenName, option.SessionTimeout)
+	jwtUtil := auth.NewJWTUtil(option.Security.JWTMethod, option.Security.JWTSecret, option.Security.TokenName, option.SessionTimeout)
 	UUIDGenerator := infra.NewNanoIDGenerator(option.Security.IDLength)
 	validator := infra.NewValidator()
 	JWTMiddleware := middleware.VerifyToken(jwtUtil, &middleware.ValidateTokenOption{
@@ -97,9 +98,9 @@ func httpServer(option *AppConfig) {
 	}))
 	app.Use(middleware.NoRouteMatched())
 
-	UserRepo := repo.NewUserRepository(dbConn)
-	UserUserCase := usecase.NewUserUseCase(UserRepo, UUIDGenerator)
-	UserHandler := ihttp.NewUserHandler(UserUserCase, jwtUtil, rdb, validator)
+	UserRepo := auth.NewUserRepository(dbConn, UUIDGenerator)
+	UserUserCase := auth.NewUserUseCase(UserRepo)
+	UserHandler := ihttp.NewUserHandler(jwtUtil, UserRepo, rdb, UserUserCase, option.Security.MaxLoginAttempts, validator)
 
 	LessonRepo := repo.NewLessonRepository(dbConn)
 	LessonUseCase := usecase.NewLessonUseCase(LessonRepo)

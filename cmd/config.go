@@ -40,10 +40,12 @@ type AppConfig struct {
 		Level    string `mapstructure:"level" json:"level" yaml:"level" validate:"oneof=debug info warn error"` // global logging level
 	} `mapstructure:"logging" json:"logging" yaml:"logging"`
 	Security struct {
-		IDLength  int    `mapstructure:"id_length" json:"id_length" yaml:"id_length" validate:"required"` // length of generated ID for entities
-		JWTMethod string `mapstructure:"jwt_method" json:"jwt_method" yaml:"jwt_method" validate:"required,oneof=HS256 HS512 ES256"`
-		JWTSecret string `mapstructure:"jwt_secret" json:"jwt_secret" yaml:"jwt_secret" validate:"required"`
-		TokenName string `mapstructure:"token_name" json:"token_name" yaml:"token_name" validate:"required"` // jwt token name set in cookie
+		IDLength         int           `mapstructure:"id_length" json:"id_length" yaml:"id_length" validate:"required"` // length of generated ID for entities
+		JWTMethod        string        `mapstructure:"jwt_method" json:"jwt_method" yaml:"jwt_method" validate:"required,oneof=HS256 HS512 ES256"`
+		JWTSecret        string        `mapstructure:"jwt_secret" json:"jwt_secret" yaml:"jwt_secret" validate:"required"`
+		TokenName        string        `mapstructure:"token_name" json:"token_name" yaml:"token_name" validate:"required"`                         // jwt token name set in cookie
+		MaxLoginAttempts int           `mapstructure:"max_login_attempts" json:"max_login_attempts" yaml:"max_login_attempts" validate:"required"` // maximum login attempts
+		RetryTimeout     time.Duration `mapstructure:"retry_timeout" json:"retry_timeout" yaml:"retry_timeout" validate:"required"`                // retry wait
 	} `mapstructure:"security" json:"security" yaml:"security"`
 	KVStore struct {
 		Host     string `mapstructure:"host" json:"host" yaml:"host"`                                 // bind host address
@@ -87,6 +89,8 @@ increasing the max_connection value of your db server, or lower this value`)
 	pflag.String("security.jwt_method", "HS256", "hash algorithm used for JWT auth")
 	pflag.String("security.jwt_secret", "", "JWT secret (required)")
 	pflag.String("security.token_name", "", "cookie name to store the token (required)")
+	pflag.Int("security.max_login_attempts", 3, "maximum login attempts")
+	pflag.Duration("security.retry_timeout", 1*time.Hour, "retry wait")
 
 	// kv storage
 	pflag.String("kv.host", "127.0.0.1", "kv host")
