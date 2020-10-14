@@ -1,4 +1,4 @@
-package main
+package infra
 
 import (
 	"encoding/json"
@@ -18,16 +18,16 @@ const EnvPrefix = "GOAPP"
 
 // AppConfig App option object
 type AppConfig struct {
-	AppID          string        `mapstructure:"app_id" json:"app_id" yaml:"app_id" validate:"required"`                     // Application ID
-	Host           string        `mapstructure:"host" json:"host" yaml:"host"`                                               // bind host address
-	Port           int           `mapstructure:"port" json:"port" yaml:"port" validate:"required"`                           // bind listen port
-	Env            string        `mapstructure:"env" json:"env" yaml:"env" validate:"oneof=development production,required"` // runtime environment
+	AppID          string        `mapstructure:"app_id" json:"app_id" yaml:"app_id" validate:"required"`            // Application ID
+	Host           string        `mapstructure:"host" json:"host" yaml:"host"`                                      // bind host address
+	Port           int           `mapstructure:"port" json:"port" yaml:"port"`                                      // bind listen port
+	Env            string        `mapstructure:"env" json:"env" yaml:"env" validate:"oneof=development production"` // runtime environment
 	SessionTimeout time.Duration `mapstructure:"session_timeout" json:"session_timeout" yaml:"session_timeout"`
 	SessionRefresh time.Duration `mapstructure:"session_refresh" json:"session_refresh" yaml:"session_refresh"` // session refresh threshold
 	Database       struct {
 		Driver   string `mapstructure:"driver" json:"driver" yaml:"driver" validate:"required"`                      // driver name
 		Host     string `mapstructure:"host" json:"host" yaml:"host" validate:"required"`                            // server host
-		MaxConn  int32  `mapstructure:"maxconn" json:"maxconn" yaml:"maxconn" validate:"required,min=100"`           // maximum opening connections number
+		MaxConn  int32  `mapstructure:"maxconn" json:"maxconn" yaml:"maxconn" validate:"min=100"`                    // maximum opening connections number
 		Password string `mapstructure:"password" json:"password" yaml:"password" validate:"required"`                // db password
 		Port     int    `mapstructure:"port" json:"port" yaml:"port"`                                                // server port
 		Protocol string `mapstructure:"protocol" json:"protocol" yaml:"protocol" validate:"omitempty,oneof=tcp udp"` // connection protocol, eg.tcp
@@ -40,16 +40,16 @@ type AppConfig struct {
 		Level    string `mapstructure:"level" json:"level" yaml:"level" validate:"oneof=debug info warn error"` // global logging level
 	} `mapstructure:"logging" json:"logging" yaml:"logging"`
 	Security struct {
-		IDLength         int           `mapstructure:"id_length" json:"id_length" yaml:"id_length" validate:"required"` // length of generated ID for entities
-		JWTMethod        string        `mapstructure:"jwt_method" json:"jwt_method" yaml:"jwt_method" validate:"required,oneof=HS256 HS512 ES256"`
+		IDLength         int           `mapstructure:"id_length" json:"id_length" yaml:"id_length"` // length of generated ID for entities
+		JWTMethod        string        `mapstructure:"jwt_method" json:"jwt_method" yaml:"jwt_method" validate:"oneof=HS256 HS512 ES256"`
 		JWTSecret        string        `mapstructure:"jwt_secret" json:"jwt_secret" yaml:"jwt_secret" validate:"required"`
-		TokenName        string        `mapstructure:"token_name" json:"token_name" yaml:"token_name" validate:"required"`                         // jwt token name set in cookie
-		MaxLoginAttempts int           `mapstructure:"max_login_attempts" json:"max_login_attempts" yaml:"max_login_attempts" validate:"required"` // maximum login attempts
-		RetryTimeout     time.Duration `mapstructure:"retry_timeout" json:"retry_timeout" yaml:"retry_timeout" validate:"required"`                // retry wait
+		TokenName        string        `mapstructure:"token_name" json:"token_name" yaml:"token_name" validate:"required"`     // jwt token name set in cookie
+		MaxLoginAttempts int           `mapstructure:"max_login_attempts" json:"max_login_attempts" yaml:"max_login_attempts"` // maximum login attempts
+		RetryTimeout     time.Duration `mapstructure:"retry_timeout" json:"retry_timeout" yaml:"retry_timeout"`                // retry wait
 	} `mapstructure:"security" json:"security" yaml:"security"`
 	KVStore struct {
 		Host     string `mapstructure:"host" json:"host" yaml:"host"`                                 // bind host address
-		Port     int    `mapstructure:"port" json:"port" yaml:"port" validate:"required"`             // bind listen port
+		Port     int    `mapstructure:"port" json:"port" yaml:"port"`                                 // bind listen port
 		Password string `mapstructure:"password" json:"password" yaml:"password" validate:"required"` // password for security reasons
 	} `mapstructure:"kv" json:"kv" yaml:"kv"`
 	DevOP struct {

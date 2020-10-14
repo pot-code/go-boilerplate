@@ -10,6 +10,7 @@ type UserModel struct {
 	Email      string `json:"email" validate:"required,email"`
 	Password   string `json:"password" validate:"required,min=6"`
 	LoginRetry int    `json:"-"`
+	LastLogin  int64  `json:"-"`
 }
 
 type UserUseCase interface {

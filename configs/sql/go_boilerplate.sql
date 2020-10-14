@@ -10,6 +10,7 @@ CREATE TABLE user
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
     login_retry INT                                 NOT NULL,
+    last_login  BIGINT                              NOT NULL,
     CONSTRAINT uc_email
         UNIQUE (email),
     CONSTRAINT uc_name

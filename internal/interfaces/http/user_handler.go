@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/pot-code/go-boilerplate/internal/domain"
@@ -21,6 +22,7 @@ type UserHandler struct {
 	UserUseCase    domain.UserUseCase
 	Validator      infra.Validator
 	MaximumRetry   int
+	RetryTimeout   time.Duration
 }
 
 // NewUserHandler create an user controller instance
@@ -30,6 +32,7 @@ func NewUserHandler(
 	KVStore driver.KeyValueDB,
 	UserUseCase domain.UserUseCase,
 	MaximumRetry int,
+	RetryTimeout time.Duration,
 	Validator infra.Validator,
 ) *UserHandler {
 	handler := &UserHandler{
@@ -39,6 +42,7 @@ func NewUserHandler(
 		KVStore:        KVStore,
 		UserRepository: UserRepository,
 		MaximumRetry:   MaximumRetry,
+		RetryTimeout:   RetryTimeout,
 	}
 	return handler
 }
@@ -62,11 +66,11 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	tx, err := conn.BeginTx(ctx, &driver.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 	})
-	defer tx.Commit(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError,
 			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to start the transaction").SetDetail(err.Error()))
 	}
+	defer tx.Commit(ctx)
 	user, err := repo.FindByCredential(ctx, post)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError,
@@ -75,12 +79,19 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	if user == nil {
 		return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, domain.ErrNoSuchUser.Error()))
 	}
-	if user.LoginRetry >= uh.MaximumRetry {
+
+	now := time.Now().Unix() // seconds
+	if user.LoginRetry >= uh.MaximumRetry && now-user.LastLogin < int64(uh.RetryTimeout.Seconds()) {
 		return c.JSON(http.StatusForbidden, infra.NewRESTStandardError(http.StatusForbidden, domain.ErrUserTooManyRetry.Error()))
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(post.Password)); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
-			user.LoginRetry++
+			if user.LoginRetry == uh.MaximumRetry {
+				user.LoginRetry = 1
+			} else {
+				user.LoginRetry++
+			}
+			user.LastLogin = now
 			repo.UpdateUser(ctx, user)
 			return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, domain.ErrNoSuchUser.Error()))
 		}
@@ -90,7 +101,9 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 
 	// reset retry number
 	user.LoginRetry = 0
+	user.LastLogin = now
 	repo.UpdateUser(ctx, user)
+
 	// issue JWT
 	tokenStr, err := ju.GenerateTokenStr(user)
 	if err != nil {
@@ -121,8 +134,8 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	if password, err := bcrypt.GenerateFromPassword([]byte(post.Password), bcrypt.MinCost); err == nil {
 		post.Password = string(password)
 	} else {
-		return c.JSON(http.StatusUnprocessableEntity,
-			infra.NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to create user").SetDetail(err.Error()))
+		return c.JSON(http.StatusInternalServerError,
+			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential").SetDetail(err.Error()))
 	}
 
 	// register
@@ -146,7 +159,7 @@ func (uh *UserHandler) HandleSignOut(c echo.Context) (err error) {
 			ju.ClearClientToken(c)
 			return kv.SetEX(tokenStr, "", token.TimeRemaining())
 		}
-		return c.NoContent(http.StatusUnauthorized)
+		return c.NoContent(http.StatusForbidden)
 	}
 	return nil
 }

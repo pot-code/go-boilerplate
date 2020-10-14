@@ -48,6 +48,8 @@ spec:
               key: jwt_secret
         - name: GOAPP_SECURITY_TOKEN_NAME
           value: auth_token
+        - name: GOAPP_SECURITY_RETRY_TIMEOUT
+          value: 1m
         - name: GOAPP_DATABASE_USERNAME
           value: root
         - name: GOAPP_DATABASE_PASSWORD

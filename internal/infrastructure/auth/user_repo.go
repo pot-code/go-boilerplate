@@ -27,7 +27,7 @@ func (repo *UserRepository) FindByCredential(ctx context.Context, post *domain.U
 	conn := repo.Conn
 	username := post.Username
 	email := post.Email
-	row, err := conn.QueryContext(ctx, `SELECT id, username, password, email, login_retry
+	row, err := conn.QueryContext(ctx, `SELECT id, username, password, email, login_retry, last_login
 	FROM user WHERE username=? OR email=?`, username, email)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (repo *UserRepository) FindByCredential(ctx context.Context, post *domain.U
 
 	if row.Next() {
 		user := new(domain.UserModel)
-		if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Email, &user.LoginRetry); err != nil {
+		if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Email, &user.LoginRetry, &user.LastLogin); err != nil {
 			return nil, err
 		}
 		return user, nil
@@ -67,8 +67,9 @@ func (repo *UserRepository) UpdateUser(ctx context.Context, post *domain.UserMod
 	conn := repo.Conn
 	_, err := conn.ExecContext(ctx, `UPDATE user
 	SET email=?,
-			login_retry=?
-	WHERE id = ?;`, post.Email, post.LoginRetry, post.ID)
+			login_retry=?,
+			last_login=?
+	WHERE id = ?;`, post.Email, post.LoginRetry, post.LastLogin, post.ID)
 	return err
 }
 
