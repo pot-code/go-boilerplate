@@ -8,10 +8,11 @@ type FieldError struct {
 
 // RESTStandardError response error
 type RESTStandardError struct {
-	Type   string `json:"type,omitempty"`
-	Code   int    `json:"code"`
-	Title  string `json:"title"`
-	Detail string `json:"detail,omitempty"`
+	Type    string `json:"type,omitempty"`
+	Code    int    `json:"code"`
+	Title   string `json:"title"`
+	Detail  string `json:"detail,omitempty"`
+	TraceID string `json:"trace_id,omitempty"`
 }
 
 func NewRESTStandardError(code int, title string) *RESTStandardError {
@@ -30,10 +31,15 @@ func (re RESTStandardError) SetDetail(detail string) RESTStandardError {
 	return re
 }
 
+func (re RESTStandardError) SetTraceID(traceID string) RESTStandardError {
+	re.TraceID = traceID
+	return re
+}
+
 // RESTValidationError standard validation error
 type RESTValidationError struct {
 	RESTStandardError
-	Errors []*FieldError `json:"errors"`
+	InvalidParams []*FieldError `json:"invalid_params"`
 }
 
 func NewRESTValidationError(code int, title string, internal []*FieldError) *RESTValidationError {
@@ -42,7 +48,7 @@ func NewRESTValidationError(code int, title string, internal []*FieldError) *RES
 			Code:  code,
 			Title: title,
 		},
-		Errors: internal,
+		InvalidParams: internal,
 	}
 }
 
@@ -52,5 +58,10 @@ func (rve RESTValidationError) Error() string {
 
 func (rve RESTValidationError) SetDetail(detail string) RESTValidationError {
 	rve.Detail = detail
+	return rve
+}
+
+func (rve RESTValidationError) SetTraceID(traceID string) RESTValidationError {
+	rve.RESTStandardError.TraceID = traceID
 	return rve
 }
