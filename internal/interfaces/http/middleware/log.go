@@ -13,10 +13,9 @@ func Logging(base *zap.Logger) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			logger := base.With(
 				zap.String("url.path", c.Request().RequestURI),
-				zap.String("url.path", c.Request().RequestURI),
 				zap.String("client.address", c.Request().RemoteAddr),
 				zap.String("http.request.method", c.Request().Method),
-				zap.Int64("http.request.body.bytes", c.Request().ContentLength),
+				zap.Int64("http.request.body.byte", c.Request().ContentLength),
 			)
 			if len(c.ParamNames()) > 0 {
 				logger = logger.With(
@@ -25,14 +24,10 @@ func Logging(base *zap.Logger) echo.MiddlewareFunc {
 				)
 			}
 			startTime := time.Now()
-			err := next(c)
+			next(c)
 			endTime := time.Now()
-			if err == nil {
-				logger.Info("Ok", zap.Duration("time", endTime.Sub(startTime)), zap.Int("http.response.status_code", c.Response().Status))
-			} else {
-				logger.Error(err.Error(), zap.Duration("time", endTime.Sub(startTime)))
-			}
-			return err
+			logger.Info("", zap.Duration("time", endTime.Sub(startTime)), zap.Int("http.response.status_code", c.Response().Status))
+			return nil
 		}
 	}
 }

@@ -1,5 +1,7 @@
 package infra
 
+import "net/http"
+
 // FieldError field error to be nested by other errors
 type FieldError struct {
 	Domain string `json:"domain"`
@@ -15,20 +17,16 @@ type RESTStandardError struct {
 	TraceID string `json:"trace_id,omitempty"`
 }
 
-func NewRESTStandardError(code int, title string) *RESTStandardError {
+func NewRESTStandardError(code int, detail string) *RESTStandardError {
 	return &RESTStandardError{
-		Code:  code,
-		Title: title,
+		Code:   code,
+		Title:  http.StatusText(code),
+		Detail: detail,
 	}
 }
 
 func (re RESTStandardError) Error() string {
 	return re.Detail
-}
-
-func (re RESTStandardError) SetDetail(detail string) RESTStandardError {
-	re.Detail = detail
-	return re
 }
 
 func (re RESTStandardError) SetTraceID(traceID string) RESTStandardError {
@@ -42,11 +40,12 @@ type RESTValidationError struct {
 	InvalidParams []*FieldError `json:"invalid_params"`
 }
 
-func NewRESTValidationError(code int, title string, internal []*FieldError) *RESTValidationError {
+func NewRESTValidationError(code int, detail string, internal []*FieldError) *RESTValidationError {
 	return &RESTValidationError{
 		RESTStandardError: RESTStandardError{
-			Code:  code,
-			Title: title,
+			Code:   code,
+			Title:  http.StatusText(code),
+			Detail: detail,
 		},
 		InvalidParams: internal,
 	}
@@ -54,11 +53,6 @@ func NewRESTValidationError(code int, title string, internal []*FieldError) *RES
 
 func (rve RESTValidationError) Error() string {
 	return rve.Detail
-}
-
-func (rve RESTValidationError) SetDetail(detail string) RESTValidationError {
-	rve.Detail = detail
-	return rve
 }
 
 func (rve RESTValidationError) SetTraceID(traceID string) RESTValidationError {

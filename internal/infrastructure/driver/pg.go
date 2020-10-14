@@ -4,13 +4,33 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/log/zapadapter"
 	"github.com/jackc/pgx/v4/pgxpool"
+	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"go.uber.org/zap"
 )
+
+type PGWrapper struct {
+	db     *pgxpool.Pool
+	logger *zap.Logger
+}
+
+type PGWrapperTx struct {
+	tx     pgx.Tx
+	logger *zap.Logger
+}
+
+type PGExecResult struct {
+	ct pgconn.CommandTag
+}
+
+type PGQueryResult struct {
+	rows pgx.Rows
+}
 
 // NewPostgreSQLConn Returns a postgreSQL connection pool
 func NewPostgreSQLConn(dsn string, cfg *DBConfig) (ITransactionalDB, error) {
@@ -19,17 +39,16 @@ func NewPostgreSQLConn(dsn string, cfg *DBConfig) (ITransactionalDB, error) {
 		return nil, err
 	}
 
-	logger := cfg.Logger.With(zap.String("driver", cfg.Driver), zap.String("database", cfg.Schema))
-	logger.Debug("Create pgsql connection instance", zap.Any("config", cfg))
+	logger := infra.Logger.With(zap.String("db.driver", cfg.Driver),
+		zap.String("db.schema", cfg.Schema),
+		zap.String("db.host", cfg.Host),
+	)
+	logger.Debug("Create mysql connection instance", zap.Any("config", cfg))
 	// the lib will handle logging
-	poolConfig.ConnConfig.Logger = zapadapter.NewLogger(logger)
+	poolConfig.ConnConfig.Logger = zapadapter.NewLogger(infra.Logger)
 	poolConfig.MaxConns = cfg.MaxConn
 	conn, err := pgxpool.ConnectConfig(context.Background(), poolConfig)
-	return &PGWrapper{conn}, err
-}
-
-type PGExecResult struct {
-	ct pgconn.CommandTag
+	return &PGWrapper{conn, logger}, err
 }
 
 func (pr PGExecResult) LastInsertId() (int64, error) {
@@ -38,10 +57,6 @@ func (pr PGExecResult) LastInsertId() (int64, error) {
 
 func (pr PGExecResult) RowsAffected() (int64, error) {
 	return pr.ct.RowsAffected(), nil
-}
-
-type PGQueryResult struct {
-	rows pgx.Rows
 }
 
 func (pr PGQueryResult) Next() bool {
@@ -55,14 +70,23 @@ func (pr PGQueryResult) Close() error {
 	return nil
 }
 
-type PGWrapper struct {
-	db *pgxpool.Pool
-}
-
 func (pw *PGWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
+	logger := pw.logger
+	startTime := time.Now()
+
 	txConfig := pgTxOptionAdapter(opts)
 	tx, err := pw.db.BeginTx(ctx, txConfig)
-	return &PGWrapperTx{tx}, err
+	if err != nil {
+		if shouldLogError(err) {
+			logger.Error(err.Error(), zap.String("db.method", "BeginTx"))
+		}
+	} else {
+		endTime := time.Now()
+		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "BeginTx"),
+		)
+	}
+	return &PGWrapperTx{tx, logger}, err
 }
 
 func pgTxOptionAdapter(opts *TxOptions) pgx.TxOptions {
@@ -106,19 +130,47 @@ func (pw *PGWrapper) Close(ctx context.Context) error {
 }
 
 func (pw *PGWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	logger := pw.logger
+	startTime := time.Now()
+
 	query = pgsqlAdapter(query)
 	res, err := pw.db.Exec(ctx, query, args...)
+	if err != nil {
+		if shouldLogError(err) {
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Exec"),
+				zap.Any("db.args", logQueryArgs(args)))
+		}
+	} else {
+		endTime := time.Now()
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Exec"),
+			zap.Any("db.args", logQueryArgs(args)))
+	}
 	return &PGExecResult{res}, err
 }
 
 func (pw *PGWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
+	logger := pw.logger
+	startTime := time.Now()
+
 	query = pgsqlAdapter(query)
 	rows, err := pw.db.Query(ctx, query, args...)
+	if err != nil {
+		if shouldLogError(err) {
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Query"),
+				zap.Any("db.args", logQueryArgs(args)))
+		}
+	} else {
+		endTime := time.Now()
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Query"),
+			zap.Any("db.args", logQueryArgs(args)))
+	}
 	return &PGQueryResult{rows}, err
-}
-
-type PGWrapperTx struct {
-	tx pgx.Tx
 }
 
 func (pwt *PGWrapperTx) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
@@ -126,23 +178,81 @@ func (pwt *PGWrapperTx) BeginTx(ctx context.Context, opts *TxOptions) (ITransact
 }
 
 func (pwt *PGWrapperTx) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	logger := pwt.logger
+	startTime := time.Now()
+
 	query = pgsqlAdapter(query)
 	res, err := pwt.tx.Exec(ctx, query, args...)
+	if err != nil {
+		if shouldLogError(err) {
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Exec"),
+				zap.Any("db.args", logQueryArgs(args)))
+		}
+	} else {
+		endTime := time.Now()
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Exec"),
+			zap.Any("db.args", logQueryArgs(args)))
+	}
 	return &PGExecResult{res}, err
 }
 
 func (pwt *PGWrapperTx) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
+	logger := pwt.logger
+	startTime := time.Now()
+
 	query = pgsqlAdapter(query)
 	rows, err := pwt.tx.Query(ctx, query, args...)
+	if err != nil {
+		if shouldLogError(err) {
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Query"),
+				zap.Any("db.args", logQueryArgs(args)))
+		}
+	} else {
+		endTime := time.Now()
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Query"),
+			zap.Any("db.args", logQueryArgs(args)))
+	}
 	return &PGQueryResult{rows}, err
 }
 
 func (pwt *PGWrapperTx) Commit(ctx context.Context) error {
-	return pwt.tx.Commit(ctx)
+	logger := pwt.logger
+	startTime := time.Now()
+	err := pwt.tx.Commit(ctx)
+	if err != nil {
+		if shouldLogError(err) {
+			logger.Error(err.Error(), zap.String("db.method", "Commit"))
+		}
+	} else {
+		endTime := time.Now()
+		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Commit"),
+		)
+	}
+	return err
 }
 
 func (pwt *PGWrapperTx) Rollback(ctx context.Context) error {
-	return pwt.tx.Rollback(ctx)
+	logger := pwt.logger
+	startTime := time.Now()
+	err := pwt.tx.Rollback(ctx)
+	if err != nil {
+		if shouldLogError(err) {
+			logger.Error(err.Error(), zap.String("db.method", "RollBack"))
+		}
+	} else {
+		endTime := time.Now()
+		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "RollBack"),
+		)
+	}
+	return err
 }
 
 func (pwt *PGWrapperTx) Close(ctx context.Context) error {

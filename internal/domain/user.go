@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 )
 
 type UserModel struct {
@@ -12,6 +13,9 @@ type UserModel struct {
 	LoginRetry int    `json:"-"`
 	LastLogin  int64  `json:"-"`
 }
+
+// ErrDuplicatedUser unique key constraint violation
+var ErrDuplicatedUser = errors.New("Username or email is already registered")
 
 type UserUseCase interface {
 	SignUp(ctx context.Context, post *UserModel) (*UserModel, error)

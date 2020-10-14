@@ -4,11 +4,11 @@ import (
 	"expvar"
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	echo_middleware "github.com/labstack/echo/v4/middleware"
 	"github.com/pot-code/go-boilerplate/internal/domain"
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
@@ -25,43 +25,42 @@ func Serve(
 	UserRepo *auth.UserRepository,
 	LessonUseCase domain.LessonUseCase,
 	TimeSpentUseCase domain.TimeSpentUseCase,
-	logger *zap.Logger,
 ) {
 	app := echo.New()
-	env := option.Env
-
 	rdb := driver.NewRedisClient(option.KVStore.Host, option.KVStore.Port, option.KVStore.Password)
-	jwtUtil := auth.NewJWTUtil(option.Security.JWTMethod, option.Security.JWTSecret, option.Security.TokenName, option.SessionTimeout)
+	jwtUtil := auth.NewJWTUtil(option.Security.JWTMethod,
+		option.Security.JWTSecret,
+		option.Security.TokenName,
+		option.SessionTimeout)
 	validator := infra.NewValidator()
-	JWTMiddleware := middleware.VerifyToken(jwtUtil, &middleware.ValidateTokenOption{
+	jwtMiddleware := middleware.VerifyToken(jwtUtil, &middleware.ValidateTokenOption{
 		InBlackList: func(token string) (bool, error) {
 			return rdb.Exists(token)
 		},
 	})
-	RefreshMiddleware := middleware.RefreshToken(jwtUtil)
+	refreshMiddleware := middleware.RefreshToken(jwtUtil)
 
-	app.HTTPErrorHandler = func(err error, c echo.Context) {
-		if v, ok := err.(*echo.HTTPError); ok {
-			c.String(v.Code, fmt.Sprintf("%v", v.Message))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, infra.RESTStandardError{
-			Code:  http.StatusInternalServerError,
-			Title: err.Error(),
-		})
-	}
-	app.Use(middleware.PanicHandling(
-		&middleware.PanicHandlingOption{
-			Logger: logger,
+	// app.HTTPErrorHandler = func(err error, c echo.Context) {
+	// 	if v, ok := err.(*echo.HTTPError); ok {
+	// 		c.String(v.Code, fmt.Sprintf("%v", v.Message))
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusInternalServerError, infra.RESTStandardError{
+	// 		Code:  http.StatusInternalServerError,
+	// 		Title: err.Error(),
+	// 	})
+	// }
+	app.Use(middleware.Logging(infra.Logger))
+	app.Use(middleware.ErrorHandling(
+		&middleware.ErrorHandlingOption{
+			Logger: infra.Logger,
 		},
 	))
-	app.Use(middleware.Logging(logger))
+	app.Use(echo_middleware.Secure())
 	if option.DevOP.APM {
 		app.Use(apmechov4.Middleware())
 	}
-	if env == "development" {
-		app.Use(middleware.CORSMiddleware)
-	}
+	app.Use(echo_middleware.CORS())
 	app.Use(middleware.AbortRequest(&middleware.AbortRequestOption{
 		Timeout: 30 * time.Second,
 	}))
@@ -79,12 +78,12 @@ func Serve(
 	app.GET("/debug/vars", func(c echo.Context) error {
 		expvarHandler.ServeHTTP(c.Response().Writer, c.Request())
 		return nil
-	}, JWTMiddleware)
+	}, jwtMiddleware)
 
 	v1 := app.Group("/api/v1")
-	TimeSpentGroup := v1.Group("/time-spent", JWTMiddleware, RefreshMiddleware)
+	TimeSpentGroup := v1.Group("/time-spent", jwtMiddleware, refreshMiddleware)
 	UserGroup := v1.Group("/user")
-	LessonGroup := v1.Group("/lesson", JWTMiddleware, RefreshMiddleware)
+	LessonGroup := v1.Group("/lesson", jwtMiddleware, refreshMiddleware)
 
 	TimeSpentGroup.GET("/", TimeSpentHandler.HandleGetTimeSpent)
 
@@ -97,18 +96,18 @@ func Serve(
 
 	v1.GET("/ws/echo", infra.WithHeartbeat(HandleEcho))
 
-	printRoutes(app, logger)
+	printRoutes(app)
 	if err := app.Start(fmt.Sprintf("%s:%d", option.Host, option.Port)); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func printRoutes(app *echo.Echo, logger *zap.Logger) {
+func printRoutes(app *echo.Echo) {
 	for _, route := range app.Routes() {
 		if !strings.HasPrefix(route.Name, "github.com/labstack/echo") {
 			name := route.Name
 			trimIndex := strings.LastIndexByte(name, '/')
-			logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
+			infra.Logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
 		}
 	}
 }

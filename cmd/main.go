@@ -30,7 +30,6 @@ func main() {
 	defer logger.Sync()
 
 	dbConn, err := driver.GetDBConnection(&driver.DBConfig{
-		Logger:   logger,
 		User:     option.Database.User,
 		Password: option.Database.Password,
 		MaxConn:  option.Database.MaxConn,
@@ -55,5 +54,5 @@ func main() {
 	TimeSpentRepo := repo.NewTimeSpentRepository(dbConn)
 	TimeSpentUseCase := usecase.NewTimeSpentUseCase(TimeSpentRepo)
 
-	ihttp.Serve(option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
+	ihttp.Serve(option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase)
 }

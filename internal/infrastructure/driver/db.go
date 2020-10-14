@@ -3,11 +3,10 @@ package driver
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
-
-	"go.uber.org/zap"
 )
 
 type TxAccessMode int
@@ -52,7 +51,6 @@ type ITransactionalDB interface {
 
 // DBConfig TODO
 type DBConfig struct {
-	Logger   *zap.Logger
 	Driver   string // driver name
 	Host     string // server host
 	MaxConn  int32  // maximum opening connections number
@@ -105,3 +103,46 @@ func shouldLogError(err error) bool {
 	}
 	return true
 }
+
+func logQueryArgs(args []interface{}) []interface{} {
+	logArgs := make([]interface{}, 0, len(args))
+
+	for _, a := range args {
+		switch v := a.(type) {
+		case []byte:
+			if len(v) < 64 {
+				a = hex.EncodeToString(v)
+			} else {
+				a = fmt.Sprintf("%x (truncated %d bytes)", v[:64], len(v)-64)
+			}
+		case string:
+			if len(v) > 64 {
+				a = fmt.Sprintf("%s (truncated %d bytes)", v[:64], len(v)-64)
+			}
+		}
+		logArgs = append(logArgs, a)
+	}
+
+	return logArgs
+}
+
+// func log(logger *zap.Logger,
+// 	ctx context.Context,
+// 	method, query string,
+// 	err error,
+// 	fields ...zap.Field,
+// ) {
+// 	if err != nil {
+// 		if shouldLogError(err) {
+// 			logger.Error(err.Error(), zap.String("db.sql", query),
+// 				zap.String("db.method", method),
+// 			)
+// 		}
+// 	} else {
+// 		endTime := time.Now()
+// 		logger.Debug("", zap.String("db.sql", query),
+// 			zap.Duration("time", endTime.Sub(startTime)),
+// 			zap.String("db.method", "Exec"),
+// 			zap.Any("args", logQueryArgs(args)))
+// 	}
+// }

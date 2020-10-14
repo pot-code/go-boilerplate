@@ -8,20 +8,9 @@ import (
 
 	// mysql driver
 	_ "github.com/go-sql-driver/mysql"
+	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"go.uber.org/zap"
 )
-
-// NewMySQLConn Returns a MySQL connection pool
-func NewMySQLConn(dsn string, cfg *DBConfig) (ITransactionalDB, error) {
-	conn, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, err
-	}
-	logger := cfg.Logger.With(zap.String("driver", cfg.Driver), zap.String("database", cfg.Schema))
-	logger.Debug("Create mysql connection instance", zap.Any("config", cfg))
-	conn.SetMaxOpenConns(int(cfg.MaxConn))
-	return &SQLWrapper{conn, logger}, err
-}
 
 // SQLWrapper Wraps a *sql.db object and provides the implementation of ITransactionalDB.
 //
@@ -31,25 +20,48 @@ type SQLWrapper struct {
 	logger *zap.Logger
 }
 
+type SQLWrapperTx struct {
+	tx     *sql.Tx
+	logger *zap.Logger
+}
+
+// NewMySQLConn Returns a MySQL connection pool
+func NewMySQLConn(dsn string, cfg *DBConfig) (ITransactionalDB, error) {
+	conn, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+	logger := infra.Logger.With(zap.String("db.driver", cfg.Driver),
+		zap.String("db.schema", cfg.Schema),
+		zap.String("db.host", cfg.Host),
+	)
+	logger.Debug("Create mysql connection instance", zap.Any("config", cfg))
+	conn.SetMaxOpenConns(int(cfg.MaxConn))
+	return &SQLWrapper{conn, logger}, err
+}
+
 // BeginTx start a new transaction context
 func (mw *SQLWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
 	logger := mw.logger
 	startTime := time.Now()
 
-	txConfig := sqlTxOptionAdapter(opts)
+	txConfig := mysqlTxOptionAdapter(opts)
 	tx, err := mw.db.BeginTx(ctx, txConfig)
 	if err != nil {
 		if shouldLogError(err) {
-			logger.Error("Exec", zap.String("sql", "begin"), zap.NamedError("err", err))
+			logger.Error(err.Error(), zap.String("db.method", "BeginTx"))
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("Exec", zap.String("sql", "begin"), zap.Duration("time", endTime.Sub(startTime)))
+		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "BeginTx"),
+		)
 	}
+	// TODO: may attach a transaction ID in the future
 	return &SQLWrapperTx{tx, logger}, err
 }
 
-func sqlTxOptionAdapter(opts *TxOptions) *sql.TxOptions {
+func mysqlTxOptionAdapter(opts *TxOptions) *sql.TxOptions {
 	if opts == nil {
 		return nil
 	}
@@ -77,15 +89,20 @@ func (mw *SQLWrapper) ExecContext(ctx context.Context, query string, args ...int
 	logger := mw.logger
 	startTime := time.Now()
 
-	query = sqlAdapter(query)
+	query = mysqlAdapter(query)
 	res, err := mw.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		if shouldLogError(err) {
-			logger.Error("Exec", zap.String("sql", query), zap.Error(err), zap.Any("args", args))
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Exec"),
+				zap.Any("db.args", logQueryArgs(args)))
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("Exec", zap.String("sql", query), zap.Duration("time", endTime.Sub(startTime)), zap.Any("args", args))
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Exec"),
+			zap.Any("db.args", logQueryArgs(args)))
 	}
 	return res, err
 }
@@ -94,22 +111,22 @@ func (mw *SQLWrapper) QueryContext(ctx context.Context, query string, args ...in
 	logger := mw.logger
 	startTime := time.Now()
 
-	query = sqlAdapter(query)
+	query = mysqlAdapter(query)
 	rows, err := mw.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		if shouldLogError(err) {
-			logger.Error("Query", zap.String("sql", query), zap.Error(err), zap.Any("args", args))
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Query"),
+				zap.Any("db.args", logQueryArgs(args)))
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("Query", zap.String("sql", query), zap.Duration("time", endTime.Sub(startTime)), zap.Any("args", args))
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Query"),
+			zap.Any("db.args", logQueryArgs(args)))
 	}
 	return rows, err
-}
-
-type SQLWrapperTx struct {
-	tx     *sql.Tx
-	logger *zap.Logger
 }
 
 func (mwt *SQLWrapperTx) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
@@ -120,15 +137,20 @@ func (mwt *SQLWrapperTx) ExecContext(ctx context.Context, query string, args ...
 	logger := mwt.logger
 	startTime := time.Now()
 
-	query = sqlAdapter(query)
+	query = mysqlAdapter(query)
 	res, err := mwt.tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		if shouldLogError(err) {
-			logger.Error("Exec", zap.String("sql", query), zap.NamedError("err", err), zap.Any("args", args))
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Exec"),
+				zap.Any("db.args", logQueryArgs(args)))
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("Exec", zap.String("sql", query), zap.Duration("time", endTime.Sub(startTime)), zap.Any("args", args))
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Exec"),
+			zap.Any("db.args", logQueryArgs(args)))
 	}
 	return res, err
 }
@@ -137,15 +159,20 @@ func (mwt *SQLWrapperTx) QueryContext(ctx context.Context, query string, args ..
 	logger := mwt.logger
 	startTime := time.Now()
 
-	query = sqlAdapter(query)
+	query = mysqlAdapter(query)
 	rows, err := mwt.tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		if shouldLogError(err) {
-			logger.Error("Query", zap.String("sql", query), zap.NamedError("err", err), zap.Any("args", args))
+			logger.Error(err.Error(), zap.String("db.sql", query),
+				zap.String("db.method", "Query"),
+				zap.Any("db.args", logQueryArgs(args)))
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("Query", zap.String("sql", query), zap.Duration("time", endTime.Sub(startTime)), zap.Any("args", args))
+		logger.Debug("", zap.String("db.sql", query),
+			zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Query"),
+			zap.Any("db.args", logQueryArgs(args)))
 	}
 	return rows, err
 }
@@ -156,11 +183,13 @@ func (mwt *SQLWrapperTx) Commit(ctx context.Context) error {
 	err := mwt.tx.Commit()
 	if err != nil {
 		if shouldLogError(err) {
-			logger.Error("Exec", zap.String("sql", "commit"), zap.NamedError("err", err))
+			logger.Error(err.Error(), zap.String("db.method", "Commit"))
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("Exec", zap.String("sql", "commit"), zap.Duration("time", endTime.Sub(startTime)))
+		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "Commit"),
+		)
 	}
 	return err
 }
@@ -171,11 +200,13 @@ func (mwt *SQLWrapperTx) Rollback(ctx context.Context) error {
 	err := mwt.tx.Rollback()
 	if err != nil {
 		if shouldLogError(err) {
-			logger.Error("Exec", zap.String("sql", "rollback"), zap.NamedError("err", err))
+			logger.Error(err.Error(), zap.String("db.method", "RollBack"))
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("Exec", zap.String("sql", "rollback"), zap.Duration("time", endTime.Sub(startTime)))
+		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+			zap.String("db.method", "RollBack"),
+		)
 	}
 	return err
 }
@@ -184,7 +215,7 @@ func (mwt *SQLWrapperTx) Close(ctx context.Context) error {
 	return nil
 }
 
-func sqlAdapter(query string) string {
+func mysqlAdapter(query string) string {
 	query = strings.Replace(query, "\"", "`", -1)
 	query = DollarPlaceholderPattern.ReplaceAllString(query, "?")
 	query = SpacePattern.ReplaceAllString(query, " ")

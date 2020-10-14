@@ -18,6 +18,9 @@ type LoggingConfig struct {
 	AppID    string
 }
 
+// Logger global logger object
+var Logger *zap.Logger
+
 // NewLogger returns a zap logger instance based on given options.
 // It's hard to extract a common interface for structured logger like zap,
 // since each argument of the log function should be zap.Field type,
@@ -39,13 +42,13 @@ func NewLogger(cfg *LoggingConfig) (*zap.Logger, error) {
 		return nil, fmt.Errorf("Failed to create logger core: %w", err)
 	}
 
-	logger := zap.New(core, zap.AddStacktrace(zap.LevelEnablerFunc(func(lv zapcore.Level) bool {
+	_logger := zap.New(core, zap.AddStacktrace(zap.LevelEnablerFunc(func(lv zapcore.Level) bool {
 		return lv >= zap.WarnLevel
 	})))
-	logger = logger.With(
+	Logger = _logger.With(
 		zap.String("service.id", cfg.AppID),
 	)
-	return logger, nil
+	return Logger, nil
 }
 
 func getZapLoggingLevel(level string) (lv zapcore.Level) {
@@ -87,7 +90,6 @@ func createProductionLogger(cfg *LoggingConfig) (zapcore.Core, error) {
 	elkEncoderConfig.MessageKey = "message"
 	elkEncoderConfig.LevelKey = "log.level"
 	elkEncoderConfig.StacktraceKey = "error.stack_trace"
-	elkEncoderConfig.CallerKey = "error.caller"
 	elkEncoder := zapcore.NewJSONEncoder(elkEncoderConfig)
 
 	if cfg.FilePath != "" {

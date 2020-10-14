@@ -14,6 +14,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// ErrNoSuchUser failed to validate the credential
+var ErrNoSuchUser = errors.New("No such user or password is incorrect")
+
+// ErrUserTooManyRetry excess maximum retry count
+var ErrUserTooManyRetry = errors.New("Excess maximum retry count")
+
 // UserHandler user related operations
 type UserHandler struct {
 	JWTUtil        *auth.JWTUtil
@@ -56,9 +62,9 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	// parse body
 	post := new(domain.UserModel)
 	if err = c.Bind(&post); err != nil {
-		internal := err.(*echo.HTTPError).Internal
+		// internal := err.(*echo.HTTPError).Internal
 		return c.JSON(http.StatusUnprocessableEntity,
-			infra.NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity").SetDetail(internal.Error()))
+			infra.NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity"))
 	}
 	post.Email = post.Username
 
@@ -68,21 +74,21 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	})
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to start the transaction").SetDetail(err.Error()))
+			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to start the transaction"))
 	}
 	defer tx.Commit(ctx)
 	user, err := repo.FindByCredential(ctx, post)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to execute db query").SetDetail(err.Error()))
+			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to execute db query"))
 	}
 	if user == nil {
-		return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, domain.ErrNoSuchUser.Error()))
+		return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
 	}
 
 	now := time.Now().Unix() // seconds
 	if user.LoginRetry >= uh.MaximumRetry && now-user.LastLogin < int64(uh.RetryTimeout.Seconds()) {
-		return c.JSON(http.StatusForbidden, infra.NewRESTStandardError(http.StatusForbidden, domain.ErrUserTooManyRetry.Error()))
+		return c.JSON(http.StatusForbidden, infra.NewRESTStandardError(http.StatusForbidden, ErrUserTooManyRetry.Error()))
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(post.Password)); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
@@ -93,10 +99,10 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 			}
 			user.LastLogin = now
 			repo.UpdateUser(ctx, user)
-			return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, domain.ErrNoSuchUser.Error()))
+			return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
 		}
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential").SetDetail(err.Error()))
+			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential"))
 	}
 
 	// reset retry number
@@ -119,9 +125,9 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	post := new(domain.UserModel)
 
 	if err = c.Bind(&post); err != nil {
-		internal := err.(*echo.HTTPError).Internal
+		// internal := err.(*echo.HTTPError).Internal
 		return c.JSON(http.StatusUnprocessableEntity,
-			infra.NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity").SetDetail(internal.Error()))
+			infra.NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity"))
 	}
 
 	// validation
@@ -135,7 +141,7 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 		post.Password = string(password)
 	} else {
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential").SetDetail(err.Error()))
+			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential"))
 	}
 
 	// register
