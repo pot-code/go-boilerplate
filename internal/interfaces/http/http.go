@@ -25,6 +25,7 @@ func Serve(
 	UserRepo *auth.UserRepository,
 	LessonUseCase domain.LessonUseCase,
 	TimeSpentUseCase domain.TimeSpentUseCase,
+	logger *zap.Logger,
 ) {
 	app := echo.New()
 	rdb := driver.NewRedisClient(option.KVStore.Host, option.KVStore.Port, option.KVStore.Password)
@@ -50,12 +51,13 @@ func Serve(
 	// 		Title: err.Error(),
 	// 	})
 	// }
-	app.Use(middleware.Logging(infra.Logger))
+	app.Use(echo_middleware.RequestID())
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
-			Logger: infra.Logger,
+			Logger: logger,
 		},
 	))
+	app.Use(middleware.Logging(logger))
 	app.Use(echo_middleware.Secure())
 	if option.DevOP.APM {
 		app.Use(apmechov4.Middleware())
@@ -96,18 +98,18 @@ func Serve(
 
 	v1.GET("/ws/echo", infra.WithHeartbeat(HandleEcho))
 
-	printRoutes(app)
+	printRoutes(app, logger)
 	if err := app.Start(fmt.Sprintf("%s:%d", option.Host, option.Port)); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func printRoutes(app *echo.Echo) {
+func printRoutes(app *echo.Echo, logger *zap.Logger) {
 	for _, route := range app.Routes() {
 		if !strings.HasPrefix(route.Name, "github.com/labstack/echo") {
 			name := route.Name
 			trimIndex := strings.LastIndexByte(name, '/')
-			infra.Logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
+			logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
 		}
 	}
 }

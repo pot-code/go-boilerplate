@@ -6,9 +6,10 @@ import (
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
-	repo "github.com/pot-code/go-boilerplate/internal/infrastructure/repository"
 	ihttp "github.com/pot-code/go-boilerplate/internal/interfaces/http"
+	"github.com/pot-code/go-boilerplate/internal/repository"
 	"github.com/pot-code/go-boilerplate/internal/usecase"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -43,16 +44,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create DB connection: %s\n", err)
 	}
+	logger.Debug("Create mysql connection instance", zap.String("db.driver", option.Database.Driver),
+		zap.String("db.schema", option.Database.Schema),
+		zap.String("db.host", option.Database.Host),
+		zap.Any("config", option.Database),
+	)
 
 	UUIDGenerator := infra.NewNanoIDGenerator(option.Security.IDLength)
 	UserRepo := auth.NewUserRepository(dbConn, UUIDGenerator)
 	UserUserCase := auth.NewUserUseCase(UserRepo)
 
-	LessonRepo := repo.NewLessonRepository(dbConn)
+	LessonRepo := repository.NewLessonRepository(dbConn)
 	LessonUseCase := usecase.NewLessonUseCase(LessonRepo)
 
-	TimeSpentRepo := repo.NewTimeSpentRepository(dbConn)
+	TimeSpentRepo := repository.NewTimeSpentRepository(dbConn)
 	TimeSpentUseCase := usecase.NewTimeSpentUseCase(TimeSpentRepo)
 
-	ihttp.Serve(option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase)
+	ihttp.Serve(option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
 }

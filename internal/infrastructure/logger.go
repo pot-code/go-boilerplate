@@ -19,7 +19,7 @@ type LoggingConfig struct {
 }
 
 // Logger global logger object
-var Logger *zap.Logger
+// var Logger *zap.Logger
 
 // NewLogger returns a zap logger instance based on given options.
 // It's hard to extract a common interface for structured logger like zap,
@@ -42,13 +42,16 @@ func NewLogger(cfg *LoggingConfig) (*zap.Logger, error) {
 		return nil, fmt.Errorf("Failed to create logger core: %w", err)
 	}
 
-	_logger := zap.New(core, zap.AddStacktrace(zap.LevelEnablerFunc(func(lv zapcore.Level) bool {
-		return lv >= zap.WarnLevel
-	})))
-	Logger = _logger.With(
+	logger := zap.New(core, zap.AddStacktrace(zap.LevelEnablerFunc(func(lv zapcore.Level) bool {
+		return lv > zap.WarnLevel
+	})), zap.AddCaller())
+	// Logger = _logger.With(
+	// 	zap.String("service.id", cfg.AppID),
+	// )
+	logger = logger.With(
 		zap.String("service.id", cfg.AppID),
 	)
-	return Logger, nil
+	return logger, nil
 }
 
 func getZapLoggingLevel(level string) (lv zapcore.Level) {
@@ -71,6 +74,7 @@ func createDevLogger(cfg *LoggingConfig) (zapcore.Core, error) {
 	logEnabler := getLevelEnabler(cfg)
 	encoderConfig := zap.NewDevelopmentEncoderConfig()
 	encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	encoderConfig.CallerKey = "log.origin.file.name"
 	encoder := zapcore.NewConsoleEncoder(encoderConfig)
 
 	if cfg.FilePath != "" {
@@ -89,6 +93,7 @@ func createProductionLogger(cfg *LoggingConfig) (zapcore.Core, error) {
 	elkEncoderConfig.TimeKey = "@timestamp"
 	elkEncoderConfig.MessageKey = "message"
 	elkEncoderConfig.LevelKey = "log.level"
+	elkEncoderConfig.CallerKey = "log.origin.file.name"
 	elkEncoderConfig.StacktraceKey = "error.stack_trace"
 	elkEncoder := zapcore.NewJSONEncoder(elkEncoderConfig)
 

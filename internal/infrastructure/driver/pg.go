@@ -8,20 +8,17 @@ import (
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/log/zapadapter"
 	"github.com/jackc/pgx/v4/pgxpool"
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"go.uber.org/zap"
 )
 
 type PGWrapper struct {
-	db     *pgxpool.Pool
-	logger *zap.Logger
+	db *pgxpool.Pool
 }
 
 type PGWrapperTx struct {
-	tx     pgx.Tx
-	logger *zap.Logger
+	tx pgx.Tx
 }
 
 type PGExecResult struct {
@@ -39,16 +36,10 @@ func NewPostgreSQLConn(dsn string, cfg *DBConfig) (ITransactionalDB, error) {
 		return nil, err
 	}
 
-	logger := infra.Logger.With(zap.String("db.driver", cfg.Driver),
-		zap.String("db.schema", cfg.Schema),
-		zap.String("db.host", cfg.Host),
-	)
-	logger.Debug("Create mysql connection instance", zap.Any("config", cfg))
 	// the lib will handle logging
-	poolConfig.ConnConfig.Logger = zapadapter.NewLogger(infra.Logger)
 	poolConfig.MaxConns = cfg.MaxConn
 	conn, err := pgxpool.ConnectConfig(context.Background(), poolConfig)
-	return &PGWrapper{conn, logger}, err
+	return &PGWrapper{conn}, err
 }
 
 func (pr PGExecResult) LastInsertId() (int64, error) {
@@ -71,7 +62,7 @@ func (pr PGQueryResult) Close() error {
 }
 
 func (pw *PGWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
-	logger := pw.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	txConfig := pgTxOptionAdapter(opts)
@@ -86,7 +77,7 @@ func (pw *PGWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransaction
 			zap.String("db.method", "BeginTx"),
 		)
 	}
-	return &PGWrapperTx{tx, logger}, err
+	return &PGWrapperTx{tx}, err
 }
 
 func pgTxOptionAdapter(opts *TxOptions) pgx.TxOptions {
@@ -130,7 +121,7 @@ func (pw *PGWrapper) Close(ctx context.Context) error {
 }
 
 func (pw *PGWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := pw.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -152,7 +143,7 @@ func (pw *PGWrapper) ExecContext(ctx context.Context, query string, args ...inte
 }
 
 func (pw *PGWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := pw.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -178,7 +169,7 @@ func (pwt *PGWrapperTx) BeginTx(ctx context.Context, opts *TxOptions) (ITransact
 }
 
 func (pwt *PGWrapperTx) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := pwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -200,7 +191,7 @@ func (pwt *PGWrapperTx) ExecContext(ctx context.Context, query string, args ...i
 }
 
 func (pwt *PGWrapperTx) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := pwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -222,7 +213,7 @@ func (pwt *PGWrapperTx) QueryContext(ctx context.Context, query string, args ...
 }
 
 func (pwt *PGWrapperTx) Commit(ctx context.Context) error {
-	logger := pwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 	err := pwt.tx.Commit(ctx)
 	if err != nil {
@@ -239,7 +230,7 @@ func (pwt *PGWrapperTx) Commit(ctx context.Context) error {
 }
 
 func (pwt *PGWrapperTx) Rollback(ctx context.Context) error {
-	logger := pwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 	err := pwt.tx.Rollback(ctx)
 	if err != nil {

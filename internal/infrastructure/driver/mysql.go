@@ -16,13 +16,12 @@ import (
 //
 // it uses zap for default logging
 type SQLWrapper struct {
-	db     *sql.DB
-	logger *zap.Logger
+	db *sql.DB
 }
 
+// SQLWrapperTx transaction wrapper
 type SQLWrapperTx struct {
-	tx     *sql.Tx
-	logger *zap.Logger
+	tx *sql.Tx
 }
 
 // NewMySQLConn Returns a MySQL connection pool
@@ -31,18 +30,13 @@ func NewMySQLConn(dsn string, cfg *DBConfig) (ITransactionalDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger := infra.Logger.With(zap.String("db.driver", cfg.Driver),
-		zap.String("db.schema", cfg.Schema),
-		zap.String("db.host", cfg.Host),
-	)
-	logger.Debug("Create mysql connection instance", zap.Any("config", cfg))
 	conn.SetMaxOpenConns(int(cfg.MaxConn))
-	return &SQLWrapper{conn, logger}, err
+	return &SQLWrapper{conn}, err
 }
 
 // BeginTx start a new transaction context
 func (mw *SQLWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
-	logger := mw.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	txConfig := mysqlTxOptionAdapter(opts)
@@ -58,7 +52,7 @@ func (mw *SQLWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransactio
 		)
 	}
 	// TODO: may attach a transaction ID in the future
-	return &SQLWrapperTx{tx, logger}, err
+	return &SQLWrapperTx{tx}, err
 }
 
 func mysqlTxOptionAdapter(opts *TxOptions) *sql.TxOptions {
@@ -86,7 +80,7 @@ func (mw *SQLWrapper) Close(ctx context.Context) error {
 }
 
 func (mw *SQLWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := mw.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -108,7 +102,7 @@ func (mw *SQLWrapper) ExecContext(ctx context.Context, query string, args ...int
 }
 
 func (mw *SQLWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := mw.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -134,7 +128,7 @@ func (mwt *SQLWrapperTx) BeginTx(ctx context.Context, opts *TxOptions) (ITransac
 }
 
 func (mwt *SQLWrapperTx) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := mwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -156,7 +150,7 @@ func (mwt *SQLWrapperTx) ExecContext(ctx context.Context, query string, args ...
 }
 
 func (mwt *SQLWrapperTx) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := mwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -178,7 +172,7 @@ func (mwt *SQLWrapperTx) QueryContext(ctx context.Context, query string, args ..
 }
 
 func (mwt *SQLWrapperTx) Commit(ctx context.Context) error {
-	logger := mwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 	err := mwt.tx.Commit()
 	if err != nil {
@@ -195,7 +189,7 @@ func (mwt *SQLWrapperTx) Commit(ctx context.Context) error {
 }
 
 func (mwt *SQLWrapperTx) Rollback(ctx context.Context) error {
-	logger := mwt.logger
+	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
 	startTime := time.Now()
 	err := mwt.tx.Rollback()
 	if err != nil {

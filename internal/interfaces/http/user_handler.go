@@ -14,11 +14,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// ErrNoSuchUser failed to validate the credential
-var ErrNoSuchUser = errors.New("No such user or password is incorrect")
-
-// ErrUserTooManyRetry excess maximum retry count
-var ErrUserTooManyRetry = errors.New("Excess maximum retry count")
+var (
+	// ErrNoSuchUser failed to validate the credential
+	ErrNoSuchUser = errors.New("No such user or password is incorrect")
+	// ErrUserTooManyRetry excess maximum retry count
+	ErrUserTooManyRetry = errors.New("Excess maximum retry count")
+)
 
 // UserHandler user related operations
 type UserHandler struct {
@@ -58,6 +59,7 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	ju := uh.JWTUtil
 	repo := uh.UserRepository
 	conn := repo.Conn
+	ctx := c.Request().Context()
 
 	// parse body
 	post := new(domain.UserModel)
@@ -68,7 +70,6 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	}
 	post.Email = post.Username
 
-	ctx := c.Request().Context()
 	tx, err := conn.BeginTx(ctx, &driver.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 	})
@@ -123,6 +124,7 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	UserUseCase := uh.UserUseCase
 	post := new(domain.UserModel)
+	ctx := c.Request().Context()
 
 	if err = c.Bind(&post); err != nil {
 		// internal := err.(*echo.HTTPError).Internal
@@ -145,7 +147,7 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	}
 
 	// register
-	_, err = UserUseCase.SignUp(c.Request().Context(), post)
+	_, err = UserUseCase.SignUp(ctx, post)
 	if err != nil {
 		if errors.Is(err, domain.ErrDuplicatedUser) {
 			return c.JSON(http.StatusConflict, infra.NewRESTStandardError(http.StatusConflict, err.Error()))
@@ -173,6 +175,7 @@ func (uh *UserHandler) HandleSignOut(c echo.Context) (err error) {
 // HandleUserExists ...
 func (uh *UserHandler) HandleUserExists(c echo.Context) (err error) {
 	UserUseCase := uh.UserUseCase
+	ctx := c.Request().Context()
 	post := new(domain.UserModel)
 	post.Username = c.QueryParam("username")
 	post.Email = c.QueryParam("email")
@@ -181,7 +184,7 @@ func (uh *UserHandler) HandleUserExists(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", err))
 	}
 
-	existing, err := UserUseCase.Exists(c.Request().Context(), post)
+	existing, err := UserUseCase.Exists(ctx, post)
 	if err != nil {
 		return err
 	}

@@ -13,8 +13,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+// ContextLogger .
+type ContextLogger string
+
 // EnvPrefix env prefix for viper
 const EnvPrefix = "GOAPP"
+
+// ContextLoggerKey logger key in request context
+const ContextLoggerKey ContextLogger = "logger"
 
 // AppConfig App option object
 type AppConfig struct {

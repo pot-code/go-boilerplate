@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -38,6 +37,10 @@ func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 	logger := custom.Logger
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			var traceID string
+			if rid := c.Request().Header.Get(echo.HeaderXRequestID); rid != "" {
+				traceID = rid
+			}
 			defer func() {
 				if any := recover(); any != nil {
 					err := any.(error)
@@ -49,30 +52,15 @@ func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 							zap.Int64("http.request.body.bytes", c.Request().ContentLength),
 							zap.Strings("route.params.name", c.ParamNames()),
 							zap.Strings("route.params.value", c.ParamValues()),
-							// zap.String("trace.id", traceID),
+							zap.String("trace.id", traceID),
 						)
 					}
 					handler(c, "", err)
 				}
 			}()
 			if err := next(c); err != nil {
-				if v, ok := err.(*echo.HTTPError); ok {
-					c.String(v.Code, fmt.Sprintf("%v", v.Message))
-					return nil
-				}
-				if logger != nil {
-					logger.Error(err.Error(),
-						zap.String("url.path", c.Request().RequestURI),
-						zap.String("client.address", c.Request().RemoteAddr),
-						zap.String("http.request.method", c.Request().Method),
-						zap.Int64("http.request.body.bytes", c.Request().ContentLength),
-						zap.Strings("route.params.name", c.ParamNames()),
-						zap.Strings("route.params.value", c.ParamValues()),
-						// zap.String("trace.id", traceID),
-					)
-				}
 				c.JSON(http.StatusInternalServerError,
-					infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(""),
+					infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
 				)
 			}
 			return nil
