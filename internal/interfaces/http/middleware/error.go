@@ -38,7 +38,7 @@ func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			var traceID string
-			if rid := c.Request().Header.Get(echo.HeaderXRequestID); rid != "" {
+			if rid := c.Response().Header().Get(echo.HeaderXRequestID); rid != "" {
 				traceID = rid
 			}
 			defer func() {

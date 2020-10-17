@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"go.uber.org/zap"
 )
 
@@ -25,16 +24,24 @@ func Logging(base *zap.Logger) echo.MiddlewareFunc {
 					zap.Strings("route.params.value", c.ParamValues()),
 				)
 			}
-			r := c.Request()
-			logger = logger.With(zap.String("trace.id", c.Response().Header().Get(echo.HeaderXRequestID)))
-			nr := r.WithContext(context.WithValue(r.Context(), infra.ContextLoggerKey, logger))
-			c.SetRequest(nr)
-
 			startTime := time.Now()
-			next(c)
+			err := next(c)
 			endTime := time.Now()
-			logger.Info("", zap.Duration("time", endTime.Sub(startTime)), zap.Int("http.response.status_code", c.Response().Status))
-			return nil
+			logger.Debug("", zap.Duration("time", endTime.Sub(startTime)), zap.Int("http.response.status_code", c.Response().Status))
+			return err
+		}
+	}
+}
+
+// SetTraceLogger set logger binding with trace ID into context
+func SetTraceLogger(base *zap.Logger, loggerKey interface{}) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			r := c.Request()
+			logger := base.With(zap.String("trace.id", c.Response().Header().Get(echo.HeaderXRequestID)))
+			nr := r.WithContext(context.WithValue(r.Context(), loggerKey, logger))
+			c.SetRequest(nr)
+			return next(c)
 		}
 	}
 }

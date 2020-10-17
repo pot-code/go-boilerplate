@@ -52,12 +52,13 @@ func Serve(
 	// 	})
 	// }
 	app.Use(echo_middleware.RequestID())
+	app.Use(middleware.Logging(logger))
+	app.Use(middleware.SetTraceLogger(logger, infra.ContextLoggerKey))
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
 			Logger: logger,
 		},
 	))
-	app.Use(middleware.Logging(logger))
 	app.Use(echo_middleware.Secure())
 	if option.DevOP.APM {
 		app.Use(apmechov4.Middleware())

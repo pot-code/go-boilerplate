@@ -45,12 +45,6 @@ func NewLogger(cfg *LoggingConfig) (*zap.Logger, error) {
 	logger := zap.New(core, zap.AddStacktrace(zap.LevelEnablerFunc(func(lv zapcore.Level) bool {
 		return lv > zap.WarnLevel
 	})), zap.AddCaller())
-	// Logger = _logger.With(
-	// 	zap.String("service.id", cfg.AppID),
-	// )
-	logger = logger.With(
-		zap.String("service.id", cfg.AppID),
-	)
 	return logger, nil
 }
 

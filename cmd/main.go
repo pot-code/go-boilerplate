@@ -28,6 +28,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create logger: %s\n", err)
 	}
+	logger = logger.With(
+		zap.String("service.id", option.AppID),
+	)
 	defer logger.Sync()
 
 	dbConn, err := driver.GetDBConnection(&driver.DBConfig{
