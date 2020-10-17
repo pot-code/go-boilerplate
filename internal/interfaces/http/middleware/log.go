@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"time"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -12,7 +12,9 @@ import (
 func Logging(base *zap.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			rid := c.Response().Header().Get(echo.HeaderXRequestID)
 			logger := base.With(
+				zap.String("trace.id", rid),
 				zap.String("url.path", c.Request().RequestURI),
 				zap.String("client.address", c.Request().RemoteAddr),
 				zap.String("http.request.method", c.Request().Method),
@@ -24,10 +26,9 @@ func Logging(base *zap.Logger) echo.MiddlewareFunc {
 					zap.Strings("route.params.value", c.ParamValues()),
 				)
 			}
-			startTime := time.Now()
 			err := next(c)
-			endTime := time.Now()
-			logger.Debug("", zap.Duration("time", endTime.Sub(startTime)), zap.Int("http.response.status_code", c.Response().Status))
+			code := c.Response().Status
+			logger.Info(http.StatusText(code), zap.Int("http.response.status_code", code))
 			return err
 		}
 	}

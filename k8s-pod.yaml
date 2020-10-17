@@ -18,6 +18,20 @@ data:
     logging.metrics.enabled: false
     output.elasticsearch:
       hosts: ['${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}']
+
+    setup.template.append_fields:
+      - name: db.method
+        type: keyword
+      - name: db.time
+        type: text
+      - name: db.sql
+        type: text
+      - name: db.args
+        type: nested
+      - name: route.params.name
+        type: nested
+      - name: route.params.value
+        type: nested
 ---
 apiVersion: v1
 kind: Pod
@@ -79,30 +93,30 @@ spec:
         - name: GOAPP_LOGGING_FILE_PATH
           value: /var/log/app/app.log
         - name: GOAPP_LOGGING_LEVEL
-          value: debug
+          value: info
       volumeMounts:
         - mountPath: /var/log/app
           name: log
-    # - name: filebeat
-    #   image: elastic/filebeat:7.9.2
-    #   resources:
-    #     requests:
-    #       memory: '128Mi'
-    #       cpu: '500m'
-    #   args: ['-c', '/etc/filebeat.yml', '-e']
-    #   env:
-    #     - name: ELASTICSEARCH_HOST
-    #       value: host.minikube.internal
-    #     - name: ELASTICSEARCH_PORT
-    #       value: '9200'
-    #   volumeMounts:
-    #     - mountPath: /etc/filebeat.yml
-    #       name: filebeat-config
-    #       subPath: filebeat.yml
-    #       readOnly: true
-    #     - mountPath: /var/log/app
-    #       name: log
-    #       readOnly: true
+    - name: filebeat
+      image: elastic/filebeat:7.9.2
+      resources:
+        requests:
+          memory: '128Mi'
+          cpu: '500m'
+      args: ['-c', '/etc/filebeat.yml', '-e']
+      env:
+        - name: ELASTICSEARCH_HOST
+          value: host.minikube.internal
+        - name: ELASTICSEARCH_PORT
+          value: '9200'
+      volumeMounts:
+        - mountPath: /etc/filebeat.yml
+          name: filebeat-config
+          subPath: filebeat.yml
+          readOnly: true
+        - mountPath: /var/log/app
+          name: log
+          readOnly: true
     - name: logrotate-es
       image: blacklabelops/logrotate
       env:

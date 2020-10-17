@@ -56,7 +56,7 @@ func Serve(
 	app.Use(middleware.SetTraceLogger(logger, infra.ContextLoggerKey))
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
-			Logger: logger,
+			LoggerKey: infra.ContextLoggerKey,
 		},
 	))
 	app.Use(echo_middleware.Secure())

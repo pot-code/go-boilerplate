@@ -10,8 +10,8 @@ import (
 
 // ErrorHandlingOption options for error handling
 type ErrorHandlingOption struct {
-	Handler func(c echo.Context, traceId string, err error)
-	Logger  *zap.Logger
+	Handler   func(c echo.Context, traceId string, err error)
+	LoggerKey interface{}
 }
 
 // ErrorHandling handle panic returned from controller
@@ -29,15 +29,21 @@ func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 		if option.Handler != nil {
 			custom.Handler = option.Handler
 		}
-		if option.Logger != nil {
-			custom.Logger = option.Logger
+		if option.LoggerKey != nil {
+			custom.LoggerKey = option.LoggerKey
 		}
 	}
 	handler := custom.Handler
-	logger := custom.Logger
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			var traceID string
+			var (
+				logger  *zap.Logger
+				traceID string
+			)
+			if custom.LoggerKey != nil {
+				logger = c.Request().Context().Value(custom.LoggerKey).(*zap.Logger)
+			}
 			if rid := c.Response().Header().Get(echo.HeaderXRequestID); rid != "" {
 				traceID = rid
 			}
@@ -45,15 +51,7 @@ func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 				if any := recover(); any != nil {
 					err := any.(error)
 					if logger != nil {
-						logger.Error(err.Error(),
-							zap.String("url.path", c.Request().RequestURI),
-							zap.String("client.address", c.Request().RemoteAddr),
-							zap.String("http.request.method", c.Request().Method),
-							zap.Int64("http.request.body.bytes", c.Request().ContentLength),
-							zap.Strings("route.params.name", c.ParamNames()),
-							zap.Strings("route.params.value", c.ParamValues()),
-							zap.String("trace.id", traceID),
-						)
+						logger.Error(err.Error())
 					}
 					handler(c, "", err)
 				}

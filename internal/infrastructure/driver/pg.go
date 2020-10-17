@@ -73,7 +73,7 @@ func (pw *PGWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransaction
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+		logger.Debug("", zap.Duration("db.time", endTime.Sub(startTime)),
 			zap.String("db.method", "BeginTx"),
 		)
 	}
@@ -135,7 +135,7 @@ func (pw *PGWrapper) ExecContext(ctx context.Context, query string, args ...inte
 	} else {
 		endTime := time.Now()
 		logger.Debug("", zap.String("db.sql", query),
-			zap.Duration("time", endTime.Sub(startTime)),
+			zap.Duration("db.time", endTime.Sub(startTime)),
 			zap.String("db.method", "Exec"),
 			zap.Any("db.args", logQueryArgs(args)))
 	}
@@ -157,7 +157,7 @@ func (pw *PGWrapper) QueryContext(ctx context.Context, query string, args ...int
 	} else {
 		endTime := time.Now()
 		logger.Debug("", zap.String("db.sql", query),
-			zap.Duration("time", endTime.Sub(startTime)),
+			zap.Duration("db.time", endTime.Sub(startTime)),
 			zap.String("db.method", "Query"),
 			zap.Any("db.args", logQueryArgs(args)))
 	}
@@ -183,7 +183,7 @@ func (pwt *PGWrapperTx) ExecContext(ctx context.Context, query string, args ...i
 	} else {
 		endTime := time.Now()
 		logger.Debug("", zap.String("db.sql", query),
-			zap.Duration("time", endTime.Sub(startTime)),
+			zap.Duration("db.time", endTime.Sub(startTime)),
 			zap.String("db.method", "Exec"),
 			zap.Any("db.args", logQueryArgs(args)))
 	}
@@ -205,7 +205,7 @@ func (pwt *PGWrapperTx) QueryContext(ctx context.Context, query string, args ...
 	} else {
 		endTime := time.Now()
 		logger.Debug("", zap.String("db.sql", query),
-			zap.Duration("time", endTime.Sub(startTime)),
+			zap.Duration("db.time", endTime.Sub(startTime)),
 			zap.String("db.method", "Query"),
 			zap.Any("db.args", logQueryArgs(args)))
 	}
@@ -222,7 +222,7 @@ func (pwt *PGWrapperTx) Commit(ctx context.Context) error {
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+		logger.Debug("", zap.Duration("db.time", endTime.Sub(startTime)),
 			zap.String("db.method", "Commit"),
 		)
 	}
@@ -239,7 +239,7 @@ func (pwt *PGWrapperTx) Rollback(ctx context.Context) error {
 		}
 	} else {
 		endTime := time.Now()
-		logger.Debug("", zap.Duration("time", endTime.Sub(startTime)),
+		logger.Debug("", zap.Duration("db.time", endTime.Sub(startTime)),
 			zap.String("db.method", "RollBack"),
 		)
 	}
