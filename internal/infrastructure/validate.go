@@ -3,15 +3,16 @@ package infra
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
 
-// Validator
+// Validator .
 type Validator interface {
 	Struct(s interface{}) []*FieldError
 	Empty(varName string, s interface{}) []*FieldError
-	AllEmpty(names []string, fields ...interface{}) []*FieldError
+	AllEmpty(names []string, fields ...interface{}) *FieldError
 }
 
 func getValidateErrorMessage(err validator.FieldError) string {
@@ -60,7 +61,7 @@ func (v ValidatorV10) Struct(s interface{}) []*FieldError {
 		for _, item := range err.(validator.ValidationErrors) {
 			result = append(result, &FieldError{
 				Domain: item.Field(),
-				Reason: getValidateErrorMessage(item),
+				Reason: item.Error(),
 			})
 		}
 		return result
@@ -88,12 +89,11 @@ func (v ValidatorV10) Empty(varName string, s interface{}) []*FieldError {
 // AllEmpty check if all fields are empty
 //
 // names and fields have one to one relationship respect to the order
-func (v ValidatorV10) AllEmpty(names []string, fields ...interface{}) []*FieldError {
+func (v ValidatorV10) AllEmpty(names []string, fields ...interface{}) *FieldError {
 	if len(names) != len(fields) {
 		panic(fmt.Errorf("number of name: %d, fields: %d", len(names), len(fields)))
 	}
 
-	var result []*FieldError
 	validate := v.core
 	nonEmpty := false
 	for _, s := range fields {
@@ -103,13 +103,10 @@ func (v ValidatorV10) AllEmpty(names []string, fields ...interface{}) []*FieldEr
 		}
 	}
 	if !nonEmpty {
-		for _, name := range names {
-			result = append(result, &FieldError{
-				Domain: name,
-				Reason: "required",
-			})
+		return &FieldError{
+			Domain: strings.Join(names, ","),
+			Reason: "One of the fields should not be empty",
 		}
-		return result
 	}
 	return nil
 }
