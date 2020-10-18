@@ -11,10 +11,10 @@ A demo to show how to develope a golang App using go-clean-arch with k8s toolkit
 - Start docker engine.
 - Start minikube.
 - Create secrets.
-- Choose a dev tool to start up App
+- Choose a dev tool to start App
 - Create database using scripts under config/sql
 
-### secret
+### Create secrets
 
 ```shell
 kubectl create secret generic go-boilerplate-secret \
@@ -25,21 +25,19 @@ kubectl create secret generic go-boilerplate-secret \
 
 ## Tilt
 
-It will read the `Tiltfile` file in CWD and bring up the pods accordingly.
+It will read the `Tiltfile` file in current directory and bring up the pods accordingly.
 
-Just run `tilt up`
+Run `tilt up`
 
 >You may install it by `curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash`
 
 ### Teardown
 
-While the tilt dashboard is still running:
-
 ```shell
 $ tilt down
 ```
 
-The command will trigger tilt to delete any k8s resource it created before.
+The command will trigger Tilt to delete any k8s resource it created before.
 
 ## Skaffold
 
@@ -57,7 +55,7 @@ debug:
 $ skaffold debug --port-forward
 ```
 
-It will read the k8s service definitions and automatically forward the port for you, add your custom port-forward rules in `skaffold.yaml`.
+It will read the k8s service definitions and automatically forward the port for you, add your own port-forward rules in `skaffold.yaml`.
 
 ### Teardown
 
