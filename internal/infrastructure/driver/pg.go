@@ -62,7 +62,7 @@ func (pr PGQueryResult) Close() error {
 }
 
 func (pw *PGWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	txConfig := pgTxOptionAdapter(opts)
@@ -121,7 +121,7 @@ func (pw *PGWrapper) Close(ctx context.Context) error {
 }
 
 func (pw *PGWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -143,7 +143,7 @@ func (pw *PGWrapper) ExecContext(ctx context.Context, query string, args ...inte
 }
 
 func (pw *PGWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -169,7 +169,7 @@ func (pwt *PGWrapperTx) BeginTx(ctx context.Context, opts *TxOptions) (ITransact
 }
 
 func (pwt *PGWrapperTx) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -191,7 +191,7 @@ func (pwt *PGWrapperTx) ExecContext(ctx context.Context, query string, args ...i
 }
 
 func (pwt *PGWrapperTx) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = pgsqlAdapter(query)
@@ -213,7 +213,7 @@ func (pwt *PGWrapperTx) QueryContext(ctx context.Context, query string, args ...
 }
 
 func (pwt *PGWrapperTx) Commit(ctx context.Context) error {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 	err := pwt.tx.Commit(ctx)
 	if err != nil {
@@ -230,7 +230,7 @@ func (pwt *PGWrapperTx) Commit(ctx context.Context) error {
 }
 
 func (pwt *PGWrapperTx) Rollback(ctx context.Context) error {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 	err := pwt.tx.Rollback(ctx)
 	if err != nil {

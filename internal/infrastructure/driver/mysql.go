@@ -36,7 +36,7 @@ func NewMySQLConn(dsn string, cfg *DBConfig) (ITransactionalDB, error) {
 
 // BeginTx start a new transaction context
 func (mw *SQLWrapper) BeginTx(ctx context.Context, opts *TxOptions) (ITransactionalDB, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	txConfig := mysqlTxOptionAdapter(opts)
@@ -79,7 +79,7 @@ func (mw *SQLWrapper) Close(ctx context.Context) error {
 }
 
 func (mw *SQLWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -101,7 +101,7 @@ func (mw *SQLWrapper) ExecContext(ctx context.Context, query string, args ...int
 }
 
 func (mw *SQLWrapper) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -127,7 +127,7 @@ func (mwt *SQLWrapperTx) BeginTx(ctx context.Context, opts *TxOptions) (ITransac
 }
 
 func (mwt *SQLWrapperTx) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -149,7 +149,7 @@ func (mwt *SQLWrapperTx) ExecContext(ctx context.Context, query string, args ...
 }
 
 func (mwt *SQLWrapperTx) QueryContext(ctx context.Context, query string, args ...interface{}) (ISQLRows, error) {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 
 	query = mysqlAdapter(query)
@@ -171,7 +171,7 @@ func (mwt *SQLWrapperTx) QueryContext(ctx context.Context, query string, args ..
 }
 
 func (mwt *SQLWrapperTx) Commit(ctx context.Context) error {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 	err := mwt.tx.Commit()
 	if err != nil {
@@ -188,7 +188,7 @@ func (mwt *SQLWrapperTx) Commit(ctx context.Context) error {
 }
 
 func (mwt *SQLWrapperTx) Rollback(ctx context.Context) error {
-	logger := ctx.Value(infra.ContextLoggerKey).(*zap.Logger)
+	logger := infra.ExtractLoggerFromContext(ctx)
 	startTime := time.Now()
 	err := mwt.tx.Rollback()
 	if err != nil {

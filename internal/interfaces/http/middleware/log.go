@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"go.uber.org/zap"
 )
 
@@ -35,12 +35,12 @@ func Logging(base *zap.Logger) echo.MiddlewareFunc {
 }
 
 // SetTraceLogger set logger binding with trace ID into context
-func SetTraceLogger(base *zap.Logger, loggerKey interface{}) echo.MiddlewareFunc {
+func SetTraceLogger(base *zap.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			r := c.Request()
 			logger := base.With(zap.String("trace.id", c.Response().Header().Get(echo.HeaderXRequestID)))
-			nr := r.WithContext(context.WithValue(r.Context(), loggerKey, logger))
+			nr := r.WithContext(infra.SetLoggerInContext(r.Context(), logger))
 			c.SetRequest(nr)
 			return next(c)
 		}

@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -17,6 +18,12 @@ type LoggingConfig struct {
 	Env      string // app environment
 	AppID    string
 }
+
+// ContextLogger .
+type ContextLogger string
+
+// ContextLoggerKey logger key in request context
+const ContextLoggerKey ContextLogger = "logger"
 
 // Logger global logger object
 // var Logger *zap.Logger
@@ -111,4 +118,12 @@ func getLevelEnabler(cfg *LoggingConfig) zapcore.LevelEnabler {
 	return zap.LevelEnablerFunc(func(lv zapcore.Level) bool {
 		return lv >= level
 	})
+}
+
+func SetLoggerInContext(ctx context.Context, logger *zap.Logger) context.Context {
+	return context.WithValue(ctx, ContextLoggerKey, logger)
+}
+
+func ExtractLoggerFromContext(ctx context.Context) *zap.Logger {
+	return ctx.Value(ContextLoggerKey).(*zap.Logger)
 }
