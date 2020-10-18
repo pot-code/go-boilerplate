@@ -14,10 +14,7 @@ type LessonHandler struct {
 }
 
 func NewLessonHandler(LessonUseCase domain.LessonUseCase, JWTUtil *auth.JWTUtil) *LessonHandler {
-	handler := &LessonHandler{
-		LessonUseCase: LessonUseCase,
-		JWTUtil:       JWTUtil,
-	}
+	handler := &LessonHandler{LessonUseCase, JWTUtil}
 	return handler
 }
 

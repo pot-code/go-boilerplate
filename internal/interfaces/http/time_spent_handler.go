@@ -22,11 +22,7 @@ func NewTimeSpentHandler(
 	JWTUtil *auth.JWTUtil,
 	Validator infra.Validator,
 ) *TimeSpentHandler {
-	handler := &TimeSpentHandler{
-		TimeSpentUseCase: TimeSpentUseCase,
-		Validator:        Validator,
-		JWTUtil:          JWTUtil,
-	}
+	handler := &TimeSpentHandler{TimeSpentUseCase, Validator, JWTUtil}
 	return handler
 }
 

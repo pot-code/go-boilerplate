@@ -16,19 +16,15 @@ type UserRepository struct {
 }
 
 func NewUserRepository(Conn driver.ITransactionalDB, UUIDGenerator infra.UUIDGenerator) *UserRepository {
-	return &UserRepository{
-		Conn:          Conn,
-		UUIDGenerator: UUIDGenerator,
-	}
+	return &UserRepository{Conn, UUIDGenerator}
 }
 
 // FindByCredential query user with provided credential
 func (repo *UserRepository) FindByCredential(ctx context.Context, post *domain.UserModel) (*domain.UserModel, error) {
 	conn := repo.Conn
 	username := post.Username
-	email := post.Email
 	row, err := conn.QueryContext(ctx, `SELECT id, username, password, email, login_retry, last_login
-	FROM user WHERE username=? OR email=?`, username, email)
+	FROM user WHERE username=? OR email=?`, username, username)
 	if err != nil {
 		return nil, err
 	}

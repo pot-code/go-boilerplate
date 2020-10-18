@@ -18,6 +18,24 @@ import (
 	"go.uber.org/zap"
 )
 
+type endpoint struct {
+	apiVersion string
+	groups     []*apiGroup
+}
+
+type apiGroup struct {
+	prefix      string
+	middlewares []echo.MiddlewareFunc
+	routes      []*route
+}
+
+type route struct {
+	method      string
+	path        string
+	handler     echo.HandlerFunc
+	middlewares []echo.MiddlewareFunc
+}
+
 // Serve create http transport server
 func Serve(
 	option *infra.AppConfig,
@@ -41,19 +59,9 @@ func Serve(
 	})
 	refreshMiddleware := middleware.RefreshToken(jwtUtil)
 
-	// app.HTTPErrorHandler = func(err error, c echo.Context) {
-	// 	if v, ok := err.(*echo.HTTPError); ok {
-	// 		c.String(v.Code, fmt.Sprintf("%v", v.Message))
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusInternalServerError, infra.RESTStandardError{
-	// 		Code:  http.StatusInternalServerError,
-	// 		Title: err.Error(),
-	// 	})
-	// }
 	app.Use(echo_middleware.RequestID())
 	app.Use(middleware.Logging(logger))
-	app.Use(middleware.SetTraceLogger(logger, infra.ContextLoggerKey))
+	app.Use(middleware.SetTraceLogger(logger))
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
 			LoggerKey: infra.ContextLoggerKey,
@@ -83,21 +91,42 @@ func Serve(
 		return nil
 	}, jwtMiddleware)
 
-	v1 := app.Group("/api/v1")
-	TimeSpentGroup := v1.Group("/time-spent", jwtMiddleware, refreshMiddleware)
-	UserGroup := v1.Group("/user")
-	LessonGroup := v1.Group("/lesson", jwtMiddleware, refreshMiddleware)
+	v1Endpoint := &endpoint{
+		apiVersion: "api/v1",
+		groups: []*apiGroup{
+			{
+				prefix: "/user",
+				routes: []*route{
+					{"POST", "/login", UserHandler.HandleSignIn, nil},
+					{"PUT", "/sign-out", UserHandler.HandleSignOut, nil},
+					{"POST", "/sign-up", UserHandler.HandleSignUp, nil},
+					{"GET", "/exists", UserHandler.HandleUserExists, nil},
+				},
+			},
+			{
+				prefix:      "/lesson",
+				middlewares: []echo.MiddlewareFunc{jwtMiddleware, refreshMiddleware},
+				routes: []*route{
+					{"GET", "/progress", LessonHandler.HandleGetLessonProgress, nil},
+				},
+			},
+			{
+				prefix:      "/time-spent",
+				middlewares: []echo.MiddlewareFunc{jwtMiddleware, refreshMiddleware},
+				routes: []*route{
+					{"GET", "/", TimeSpentHandler.HandleGetTimeSpent, nil},
+				},
+			},
+			{
+				prefix: "/ws",
+				routes: []*route{
+					{"GET", "/echo", infra.WithHeartbeat(HandleEcho), nil},
+				},
+			},
+		},
+	}
 
-	TimeSpentGroup.GET("/", TimeSpentHandler.HandleGetTimeSpent)
-
-	UserGroup.POST("/login", UserHandler.HandleSignIn)
-	UserGroup.GET("/sign-out", UserHandler.HandleSignOut)
-	UserGroup.POST("/sign-up", UserHandler.HandleSignUp)
-	UserGroup.GET("/exists", UserHandler.HandleUserExists)
-
-	LessonGroup.GET("/progress", LessonHandler.HandleGetLessonProgress)
-
-	v1.GET("/ws/echo", infra.WithHeartbeat(HandleEcho))
+	createEndpoint(app, v1Endpoint)
 
 	printRoutes(app, logger)
 	if err := app.Start(fmt.Sprintf("%s:%d", option.Host, option.Port)); err != nil {
@@ -111,6 +140,39 @@ func printRoutes(app *echo.Echo, logger *zap.Logger) {
 			name := route.Name
 			trimIndex := strings.LastIndexByte(name, '/')
 			logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
+		}
+	}
+}
+
+func createEndpoint(app *echo.Echo, def *endpoint) {
+	var root *echo.Group
+	if strings.HasPrefix(def.apiVersion, "/") {
+		root = app.Group(def.apiVersion)
+	} else {
+		root = app.Group("/" + def.apiVersion)
+	}
+
+	for _, group := range def.groups {
+		echoGroup := root.Group(group.prefix, group.middlewares...)
+		for _, api := range group.routes {
+			var method func(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+			switch api.method {
+			case "GET":
+				method = echoGroup.GET
+			case "POST":
+				method = echoGroup.POST
+			case "PUT":
+				method = echoGroup.PUT
+			case "DELETE":
+				method = echoGroup.DELETE
+			case "HEAD":
+				method = echoGroup.HEAD
+			case "CONNECT":
+				method = echoGroup.CONNECT
+			default:
+				panic(fmt.Errorf("createEndpoint: unknown method %s", api.method))
+			}
+			method(api.path, api.handler, api.middlewares...)
 		}
 	}
 }

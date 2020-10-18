@@ -16,9 +16,7 @@ type LessonUseCase struct {
 func NewLessonUseCase(
 	LessonRepository domain.LessonRepository,
 ) *LessonUseCase {
-	return &LessonUseCase{
-		LessonRepository: LessonRepository,
-	}
+	return &LessonUseCase{LessonRepository}
 }
 
 // GetUserLessonProgress get learning progress for each lesson

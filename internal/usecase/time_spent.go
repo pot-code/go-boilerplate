@@ -17,9 +17,7 @@ type TimeSpentUseCase struct {
 func NewTimeSpentUseCase(
 	TimeSpentRepository domain.TimeSpentRepository,
 ) *TimeSpentUseCase {
-	return &TimeSpentUseCase{
-		TimeSpentRepository: TimeSpentRepository,
-	}
+	return &TimeSpentUseCase{TimeSpentRepository}
 }
 
 // GetUserTimeSpent get times spent on learning
