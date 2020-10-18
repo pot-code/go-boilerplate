@@ -5,7 +5,12 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/go-playground/locales/en"
+	"github.com/go-playground/locales/zh"
+	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
+	en_translations "github.com/go-playground/validator/v10/translations/en"
+	zh_translations "github.com/go-playground/validator/v10/translations/zh"
 )
 
 // Validator .
@@ -32,12 +37,20 @@ func getValidateErrorMessage(err validator.FieldError) string {
 
 // ValidatorV10 Validator implementation using go-playground
 type ValidatorV10 struct {
-	core *validator.Validate
+	core  *validator.Validate
+	trans ut.Translator
 }
 
-// NewValidator .
+// NewValidator create a new Validator
 func NewValidator() *ValidatorV10 {
+	en := en.New()
+	zh := zh.New()
+	uni := ut.New(en, en, zh)
+	trans, _ := uni.GetTranslator("en") // en translator as default
+
 	validate := validator.New()
+	en_translations.RegisterDefaultTranslations(validate, trans)
+	zh_translations.RegisterDefaultTranslations(validate, trans)
 	validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := fld.Tag.Get("json")
 		if name == "-" || name == "" {
@@ -49,7 +62,8 @@ func NewValidator() *ValidatorV10 {
 		return name
 	})
 	return &ValidatorV10{
-		core: validate,
+		core:  validate,
+		trans: trans,
 	}
 }
 
@@ -61,7 +75,7 @@ func (v ValidatorV10) Struct(s interface{}) []*FieldError {
 		for _, item := range err.(validator.ValidationErrors) {
 			result = append(result, &FieldError{
 				Domain: item.Field(),
-				Reason: item.Error(),
+				Reason: item.Translate(v.trans),
 			})
 		}
 		return result
