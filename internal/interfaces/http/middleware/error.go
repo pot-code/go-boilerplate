@@ -57,9 +57,13 @@ func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 				}
 			}()
 			if err := next(c); err != nil {
-				c.JSON(http.StatusInternalServerError,
-					infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
-				)
+				if v, ok := err.(*echo.HTTPError); ok {
+					c.String(v.Code, v.Error())
+				} else {
+					c.JSON(http.StatusInternalServerError,
+						infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
+					)
+				}
 			}
 			return nil
 		}

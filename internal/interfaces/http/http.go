@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	echo_middleware "github.com/labstack/echo/v4/middleware"
@@ -73,15 +72,15 @@ func Serve(
 	}
 	app.Use(echo_middleware.CORS())
 	app.Use(middleware.AbortRequest(&middleware.AbortRequestOption{
-		Timeout: 30 * time.Second,
+		Timeout: option.RequestTimeout,
 	}))
-	app.Use(middleware.NoRouteMatched())
 
-	UserHandler := NewUserHandler(jwtUtil,
-		UserRepo, rdb, UserUserCase,
+	UserHandler := NewUserHandler(
+		jwtUtil, UserRepo, rdb, UserUserCase,
 		option.Security.MaxLoginAttempts,
 		option.Security.RetryTimeout,
-		validator)
+		validator,
+	)
 	LessonHandler := NewLessonHandler(LessonUseCase, jwtUtil)
 	TimeSpentHandler := NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
 
@@ -129,6 +128,7 @@ func Serve(
 	createEndpoint(app, v1Endpoint)
 
 	printRoutes(app, logger)
+
 	if err := app.Start(fmt.Sprintf("%s:%d", option.Host, option.Port)); err != nil {
 		log.Fatal(err)
 	}
@@ -145,6 +145,8 @@ func printRoutes(app *echo.Echo, logger *zap.Logger) {
 }
 
 func createEndpoint(app *echo.Echo, def *endpoint) {
+	type RESTMethod func(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+
 	var root *echo.Group
 	if strings.HasPrefix(def.apiVersion, "/") {
 		root = app.Group(def.apiVersion)
@@ -155,7 +157,7 @@ func createEndpoint(app *echo.Echo, def *endpoint) {
 	for _, group := range def.groups {
 		echoGroup := root.Group(group.prefix, group.middlewares...)
 		for _, api := range group.routes {
-			var method func(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+			var method RESTMethod
 			switch api.method {
 			case "GET":
 				method = echoGroup.GET

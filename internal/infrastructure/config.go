@@ -23,6 +23,7 @@ type AppConfig struct {
 	Port           int           `mapstructure:"port" json:"port" yaml:"port"`                                      // bind listen port
 	Env            string        `mapstructure:"env" json:"env" yaml:"env" validate:"oneof=development production"` // runtime environment
 	SessionTimeout time.Duration `mapstructure:"session_timeout" json:"session_timeout" yaml:"session_timeout"`
+	RequestTimeout time.Duration `mapstructure:"request_timeout" json:"request_timeout" yaml:"request_timeout"`
 	SessionRefresh time.Duration `mapstructure:"session_refresh" json:"session_refresh" yaml:"session_refresh"` // session refresh threshold
 	Database       struct {
 		Driver   string `mapstructure:"driver" json:"driver" yaml:"driver" validate:"required"`                      // driver name
@@ -62,6 +63,7 @@ func InitConfig() (*AppConfig, error) {
 	// app
 	pflag.String("host", "", "binding address")
 	pflag.String("app_id", "", "application identifier (required)")
+	pflag.Duration("request_timeout", 30*time.Second, "abort the request after the timeout")
 	pflag.String("env", "development", "runtime environment, can be 'development' or 'production'")
 	pflag.Int("port", 8081, "listening port")
 	pflag.Duration("session_timeout", 30*time.Minute, "JWT lifetime(m, s and h units are supported), eg.30m")
