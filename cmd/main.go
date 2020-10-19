@@ -5,6 +5,7 @@ import (
 
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/logging"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/uuid"
 	ihttp "github.com/pot-code/go-boilerplate/internal/interfaces/http"
 	"github.com/pot-code/go-boilerplate/internal/lesson"
@@ -20,7 +21,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, err := infra.NewLogger(&infra.LoggingConfig{
+	logger, err := logging.NewLogger(&logging.Config{
 		FilePath: option.Logging.FilePath,
 		Level:    option.Logging.Level,
 		AppID:    option.AppID,

@@ -7,20 +7,20 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/pot-code/go-boilerplate/internal/domain"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
 )
 
 type TimeSpentHandler struct {
 	timeSpentUseCase domain.TimeSpentUseCase
-	validator        infra.Validator
+	validator        validate.Validator
 	jwtUtil          *auth.JWTUtil
 }
 
 func NewTimeSpentHandler(
 	TimeSpentUseCase domain.TimeSpentUseCase,
 	JWTUtil *auth.JWTUtil,
-	Validator infra.Validator,
+	Validator validate.Validator,
 ) *TimeSpentHandler {
 	handler := &TimeSpentHandler{TimeSpentUseCase, Validator, JWTUtil}
 	return handler
@@ -40,7 +40,7 @@ func (tsh *TimeSpentHandler) HandleGetTimeSpent(c echo.Context) (err error) {
 	}
 	at, err := time.Parse(time.RFC3339, ts)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*infra.FieldError{{
+		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*validate.FieldError{{
 			Domain: "ts",
 			Reason: fmt.Sprintf("ts must be int RFC3339 layout, %s", err.Error()),
 		}}))

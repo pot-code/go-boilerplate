@@ -13,8 +13,7 @@ type Websocket struct {
 	upgrader *websocket.Upgrader
 }
 
-// WebsocketHandler .
-type WebsocketHandler func(*websocket.Conn) error
+type websocketHandler func(*websocket.Conn) error
 
 var (
 	writeWait    = 10 * time.Second
@@ -37,7 +36,7 @@ func NewWebsocket() *Websocket {
 }
 
 // WithHeartbeat wrap handler with heartbeat probe
-func (ws Websocket) WithHeartbeat(handler WebsocketHandler) echo.HandlerFunc {
+func (ws Websocket) WithHeartbeat(handler websocketHandler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		conn, err := ws.upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
@@ -70,7 +69,7 @@ func heartbeatRoutine(conn *websocket.Conn) {
 	}
 }
 
-func processRoutine(conn *websocket.Conn, handler func(*websocket.Conn) error) {
+func processRoutine(conn *websocket.Conn, handler websocketHandler) {
 	defer conn.Close()
 	for {
 		if err := handler(conn); err != nil {

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/logging"
 	"go.uber.org/zap"
 )
 
@@ -40,7 +40,7 @@ func SetTraceLogger(base *zap.Logger) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			r := c.Request()
 			logger := base.With(zap.String("trace.id", c.Response().Header().Get(echo.HeaderXRequestID)))
-			nr := r.WithContext(infra.SetLoggerInContext(r.Context(), logger))
+			nr := r.WithContext(logging.SetLoggerInContext(r.Context(), logger))
 			c.SetRequest(nr)
 			return next(c)
 		}

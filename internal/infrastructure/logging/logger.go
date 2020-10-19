@@ -1,4 +1,4 @@
-package infra
+package logging
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// LoggingConfig options used in creating zap logger
-type LoggingConfig struct {
+// Config options used in creating zap logger
+type Config struct {
 	FilePath string // log file path
 	Level    string // global logging level
 	Env      string // app environment
@@ -32,7 +32,7 @@ const ContextLoggerKey ContextLogger = "logger"
 // It's hard to extract a common interface for structured logger like zap,
 // since each argument of the log function should be zap.Field type,
 // it won't be nice to implement another zap
-func NewLogger(cfg *LoggingConfig) (*zap.Logger, error) {
+func NewLogger(cfg *Config) (*zap.Logger, error) {
 	var (
 		core zapcore.Core
 		err  error
@@ -71,7 +71,7 @@ func getZapLoggingLevel(level string) (lv zapcore.Level) {
 	return
 }
 
-func createDevLogger(cfg *LoggingConfig) (zapcore.Core, error) {
+func createDevLogger(cfg *Config) (zapcore.Core, error) {
 	logEnabler := getLevelEnabler(cfg)
 	encoderConfig := zap.NewDevelopmentEncoderConfig()
 	encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
@@ -85,7 +85,7 @@ func createDevLogger(cfg *LoggingConfig) (zapcore.Core, error) {
 	return zapcore.NewCore(encoder, os.Stderr, logEnabler), nil
 }
 
-func createProductionLogger(cfg *LoggingConfig) (zapcore.Core, error) {
+func createProductionLogger(cfg *Config) (zapcore.Core, error) {
 	logEnabler := getLevelEnabler(cfg)
 	ecsEncoderConfig := zap.NewProductionEncoderConfig()
 	ecsEncoderConfig.EncodeTime = zapcore.TimeEncoder(func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
@@ -105,7 +105,7 @@ func createProductionLogger(cfg *LoggingConfig) (zapcore.Core, error) {
 	return zapcore.NewCore(ecsEncoder, os.Stderr, logEnabler), nil
 }
 
-func getFileSyncer(cfg *LoggingConfig) (zapcore.WriteSyncer, error) {
+func getFileSyncer(cfg *Config) (zapcore.WriteSyncer, error) {
 	fd, err := os.OpenFile(cfg.FilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, err
@@ -113,17 +113,19 @@ func getFileSyncer(cfg *LoggingConfig) (zapcore.WriteSyncer, error) {
 	return fd, err
 }
 
-func getLevelEnabler(cfg *LoggingConfig) zapcore.LevelEnabler {
+func getLevelEnabler(cfg *Config) zapcore.LevelEnabler {
 	level := getZapLoggingLevel(cfg.Level)
 	return zap.LevelEnablerFunc(func(lv zapcore.Level) bool {
 		return lv >= level
 	})
 }
 
+// SetLoggerInContext set logger into target context
 func SetLoggerInContext(ctx context.Context, logger *zap.Logger) context.Context {
 	return context.WithValue(ctx, ContextLoggerKey, logger)
 }
 
+// ExtractLoggerFromContext try to extract logger from context
 func ExtractLoggerFromContext(ctx context.Context) *zap.Logger {
 	return ctx.Value(ContextLoggerKey).(*zap.Logger)
 }

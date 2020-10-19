@@ -1,4 +1,4 @@
-package infra
+package validate
 
 import (
 	"fmt"
@@ -13,31 +13,14 @@ import (
 	zh_translations "github.com/go-playground/validator/v10/translations/zh"
 )
 
-// FieldError field error to be nested by other errors
-type FieldError struct {
-	Domain string `json:"domain"`
-	Reason string `json:"reason"`
-}
-
-func NewFieldError(domain string, reason string) *FieldError {
-	return &FieldError{domain, reason}
-}
-
-// Validator .
-type Validator interface {
-	Struct(s interface{}) []*FieldError
-	Empty(varName string, s interface{}) []*FieldError
-	AllEmpty(names []string, fields ...interface{}) *FieldError
-}
-
-// ValidatorV10 Validator implementation using go-playground
-type ValidatorV10 struct {
+// PlaygroundV10 Validator implementation using go-playground
+type PlaygroundV10 struct {
 	core  *validator.Validate
 	trans ut.Translator
 }
 
 // NewValidator create a new Validator
-func NewValidator() *ValidatorV10 {
+func NewValidator() *PlaygroundV10 {
 	en := en.New()
 	zh := zh.New()
 	uni := ut.New(en, en, zh)
@@ -56,14 +39,14 @@ func NewValidator() *ValidatorV10 {
 		}
 		return name
 	})
-	return &ValidatorV10{
+	return &PlaygroundV10{
 		core:  validate,
 		trans: trans,
 	}
 }
 
 // Struct validate struct
-func (v ValidatorV10) Struct(s interface{}) []*FieldError {
+func (v PlaygroundV10) Struct(s interface{}) []*FieldError {
 	var result []*FieldError
 	validate := v.core
 	if err := validate.Struct(s); err != nil {
@@ -76,7 +59,7 @@ func (v ValidatorV10) Struct(s interface{}) []*FieldError {
 }
 
 // Empty check if value is empty
-func (v ValidatorV10) Empty(varName string, s interface{}) []*FieldError {
+func (v PlaygroundV10) Empty(varName string, s interface{}) []*FieldError {
 	validate := v.core
 	var result []*FieldError
 	if err := validate.Var(s, "required"); err != nil {
@@ -92,7 +75,7 @@ func (v ValidatorV10) Empty(varName string, s interface{}) []*FieldError {
 // AllEmpty check if all fields are empty
 //
 // names and fields have one to one relationship respect to the order
-func (v ValidatorV10) AllEmpty(names []string, fields ...interface{}) *FieldError {
+func (v PlaygroundV10) AllEmpty(names []string, fields ...interface{}) *FieldError {
 	if len(names) != len(fields) {
 		panic(fmt.Errorf("number of name: %d, fields: %d", len(names), len(fields)))
 	}

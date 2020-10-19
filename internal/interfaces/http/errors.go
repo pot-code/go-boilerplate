@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
+	validator "github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
 )
 
 // RESTStandardError response error
@@ -35,10 +35,10 @@ func (re RESTStandardError) SetTraceID(traceID string) RESTStandardError {
 // RESTValidationError standard validation error
 type RESTValidationError struct {
 	RESTStandardError
-	InvalidParams []*infra.FieldError `json:"invalid_params"`
+	InvalidParams []*validator.FieldError `json:"invalid_params"`
 }
 
-func NewRESTValidationError(code int, detail string, internal []*infra.FieldError) *RESTValidationError {
+func NewRESTValidationError(code int, detail string, internal []*validator.FieldError) *RESTValidationError {
 	return &RESTValidationError{
 		RESTStandardError: RESTStandardError{
 			Code:   code,

@@ -8,9 +8,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/pot-code/go-boilerplate/internal/domain"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -28,7 +28,7 @@ type UserHandler struct {
 	userRepository domain.UserRepository
 	kvStore        driver.KeyValueDB
 	userUseCase    domain.UserUseCase
-	validator      infra.Validator
+	validator      validate.Validator
 	maximumRetry   int
 	retryTimeout   time.Duration
 }
@@ -80,7 +80,7 @@ func NewUserHandler(
 	UserUseCase domain.UserUseCase,
 	MaximumRetry int,
 	RetryTimeout time.Duration,
-	Validator infra.Validator,
+	Validator validate.Validator,
 ) *UserHandler {
 	handler := &UserHandler{JWTUtil, conn, UserRepository, KVStore, UserUseCase, Validator, MaximumRetry, RetryTimeout}
 	return handler
@@ -219,7 +219,7 @@ func (uh *UserHandler) HandleUserExists(c echo.Context) (err error) {
 	post.Email = c.QueryParam("email")
 
 	if err := uh.validator.AllEmpty([]string{"username", "email"}, post.Username, post.Email); err != nil {
-		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*infra.FieldError{err}))
+		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*validate.FieldError{err}))
 	}
 	if err := uh.validator.Struct(post); err != nil {
 		return c.JSON(http.StatusBadRequest,

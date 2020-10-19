@@ -13,6 +13,8 @@ import (
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/logging"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
 	"github.com/pot-code/go-boilerplate/internal/interfaces/http/middleware"
 	"go.elastic.co/apm/module/apmechov4"
 	"go.uber.org/zap"
@@ -52,7 +54,7 @@ func Serve(
 		option.Security.JWTSecret,
 		option.Security.TokenName,
 		option.SessionTimeout)
-	validator := infra.NewValidator()
+	validator := validate.NewValidator()
 	websocket := infra.NewWebsocket()
 	jwtMiddleware := middleware.VerifyToken(jwtUtil, &middleware.ValidateTokenOption{
 		InBlackList: func(token string) (bool, error) {
@@ -66,7 +68,7 @@ func Serve(
 	app.Use(middleware.SetTraceLogger(logger))
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
-			LoggerKey: infra.ContextLoggerKey,
+			LoggerKey: logging.ContextLoggerKey,
 			Handler: func(c echo.Context, traceID string, err error) {
 				c.JSON(http.StatusInternalServerError,
 					NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
@@ -91,8 +93,8 @@ func Serve(
 	)
 	LessonHandler := NewLessonHandler(LessonUseCase, jwtUtil)
 	TimeSpentHandler := NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
-
 	expvarHandler := expvar.Handler()
+
 	app.GET("/debug/vars", func(c echo.Context) error {
 		expvarHandler.ServeHTTP(c.Response().Writer, c.Request())
 		return nil
