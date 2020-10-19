@@ -137,7 +137,7 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 				user.LoginRetry++
 			}
 			user.LastLogin = now
-			repo.UpdateUser(ctx, user)
+			repo.UpdateLogin(ctx, user)
 			return c.JSON(http.StatusUnauthorized, NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
 		}
 		return c.JSON(http.StatusInternalServerError,
@@ -147,7 +147,7 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	// reset retry number
 	user.LoginRetry = 0
 	user.LastLogin = now
-	repo.UpdateUser(ctx, user)
+	repo.UpdateLogin(ctx, user)
 
 	// issue JWT
 	tokenStr, err := ju.GenerateTokenStr(user)
@@ -185,7 +185,9 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	}
 
 	// register
-	_, err = UserUseCase.SignUp(ctx, post.ToDomain())
+	user := post.ToDomain()
+	user.LastLogin = time.Now().Unix()
+	_, err = UserUseCase.SignUp(ctx, user)
 	if err != nil {
 		if errors.Is(err, domain.ErrDuplicatedUser) {
 			return c.JSON(http.StatusConflict, NewRESTStandardError(http.StatusConflict, err.Error()))

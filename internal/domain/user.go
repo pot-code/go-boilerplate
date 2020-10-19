@@ -24,6 +24,6 @@ type UserUseCase interface {
 
 type UserRepository interface {
 	FindByCredential(ctx context.Context, post *UserModel) (*UserModel, error)
-	UpdateUser(ctx context.Context, post *UserModel) error
+	UpdateLogin(ctx context.Context, post *UserModel) error
 	SaveUser(ctx context.Context, post *UserModel) error
 }

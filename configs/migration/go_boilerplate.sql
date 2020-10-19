@@ -9,7 +9,7 @@ CREATE TABLE user
     password    VARCHAR(64)                         NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-    login_retry INT                                 NOT NULL,
+    login_retry INT                                 NOT NULL DEFAULT 0,
     last_login  BIGINT                              NOT NULL,
     CONSTRAINT uc_email
         UNIQUE (email),

@@ -50,8 +50,8 @@ func (repo *UserRepository) SaveUser(ctx context.Context, post *domain.UserModel
 		return err
 	}
 
-	_, err := conn.ExecContext(ctx, `INSERT INTO user(id, username, password, email)
-	VALUES(?,?,?,?)`, post.ID, post.Username, post.Password, post.Email)
+	_, err := conn.ExecContext(ctx, `INSERT INTO user(id, username, password, email, last_login)
+	VALUES(?,?,?,?,?)`, post.ID, post.Username, post.Password, post.Email, post.LastLogin)
 
 	if err, ok := err.(*mysql.MySQLError); ok && err.Number == 1062 {
 		return domain.ErrDuplicatedUser
@@ -59,7 +59,7 @@ func (repo *UserRepository) SaveUser(ctx context.Context, post *domain.UserModel
 	return err
 }
 
-func (repo *UserRepository) UpdateUser(ctx context.Context, post *domain.UserModel) error {
+func (repo *UserRepository) UpdateLogin(ctx context.Context, post *domain.UserModel) error {
 	conn := repo.Conn
 	_, err := conn.ExecContext(ctx, `UPDATE user
 	SET email=?,
