@@ -53,6 +53,7 @@ func Serve(
 		option.Security.TokenName,
 		option.SessionTimeout)
 	validator := infra.NewValidator()
+	websocket := infra.NewWebsocket()
 	jwtMiddleware := middleware.VerifyToken(jwtUtil, &middleware.ValidateTokenOption{
 		InBlackList: func(token string) (bool, error) {
 			return rdb.Exists(token)
@@ -126,7 +127,7 @@ func Serve(
 			{
 				prefix: "/ws",
 				routes: []*route{
-					{"GET", "/echo", infra.WithHeartbeat(HandleEcho), nil},
+					{"GET", "/echo", websocket.WithHeartbeat(HandleEcho), nil},
 				},
 			},
 		},

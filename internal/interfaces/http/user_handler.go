@@ -57,6 +57,20 @@ func (ucm *UserCheckModel) ToDomain() *domain.UserModel {
 	}
 }
 
+type UserSignUpModel struct {
+	Username string `json:"username" validate:"required,min=6,max=31"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=6"`
+}
+
+func (usm *UserSignUpModel) ToDomain() *domain.UserModel {
+	return &domain.UserModel{
+		Username: usm.Username,
+		Email:    usm.Email,
+		Password: usm.Password,
+	}
+}
+
 // NewUserHandler create an user controller instance
 func NewUserHandler(
 	JWTUtil *auth.JWTUtil,
@@ -147,7 +161,7 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 // HandleSignUp ...
 func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	UserUseCase := uh.userUseCase
-	post := new(domain.UserModel)
+	post := new(UserSignUpModel)
 	ctx := c.Request().Context()
 
 	if err = c.Bind(&post); err != nil {
@@ -171,7 +185,7 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	}
 
 	// register
-	_, err = UserUseCase.SignUp(ctx, post)
+	_, err = UserUseCase.SignUp(ctx, post.ToDomain())
 	if err != nil {
 		if errors.Is(err, domain.ErrDuplicatedUser) {
 			return c.JSON(http.StatusConflict, NewRESTStandardError(http.StatusConflict, err.Error()))

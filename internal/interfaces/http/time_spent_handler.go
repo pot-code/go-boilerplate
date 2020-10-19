@@ -35,9 +35,6 @@ func (tsh *TimeSpentHandler) HandleGetTimeSpent(c echo.Context) (err error) {
 	user.ID = claims.UID
 
 	// validation
-	if err := tsh.validator.Empty("user ID", user.ID); err != nil {
-		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", err))
-	}
 	if err := tsh.validator.Empty("ts", ts); err != nil {
 		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", err))
 	}

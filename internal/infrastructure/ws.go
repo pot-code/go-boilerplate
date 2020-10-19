@@ -8,14 +8,13 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-	HandshakeTimeout: 3 * time.Second,
+// Websocket Websocket utils collection
+type Websocket struct {
+	upgrader *websocket.Upgrader
 }
+
+// WebsocketHandler .
+type WebsocketHandler func(*websocket.Conn) error
 
 var (
 	writeWait    = 10 * time.Second
@@ -23,10 +22,24 @@ var (
 	pingInterval = pongWait * 9 / 10
 )
 
-// WithHeartbeat wrap handler function with heartbeat probe
-func WithHeartbeat(handler func(*websocket.Conn) error) echo.HandlerFunc {
+// NewWebsocket create new Websocket
+func NewWebsocket() *Websocket {
+	return &Websocket{
+		&websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+			HandshakeTimeout: 3 * time.Second,
+		},
+	}
+}
+
+// WithHeartbeat wrap handler with heartbeat probe
+func (ws Websocket) WithHeartbeat(handler WebsocketHandler) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+		conn, err := ws.upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
 			return c.String(http.StatusBadRequest, err.Error())
 		}
