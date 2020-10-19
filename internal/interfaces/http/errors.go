@@ -1,12 +1,10 @@
-package infra
+package http
 
-import "net/http"
+import (
+	"net/http"
 
-// FieldError field error to be nested by other errors
-type FieldError struct {
-	Domain string `json:"domain"`
-	Reason string `json:"reason"`
-}
+	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
+)
 
 // RESTStandardError response error
 type RESTStandardError struct {
@@ -37,10 +35,10 @@ func (re RESTStandardError) SetTraceID(traceID string) RESTStandardError {
 // RESTValidationError standard validation error
 type RESTValidationError struct {
 	RESTStandardError
-	InvalidParams []*FieldError `json:"invalid_params"`
+	InvalidParams []*infra.FieldError `json:"invalid_params"`
 }
 
-func NewRESTValidationError(code int, detail string, internal []*FieldError) *RESTValidationError {
+func NewRESTValidationError(code int, detail string, internal []*infra.FieldError) *RESTValidationError {
 	return &RESTValidationError{
 		RESTStandardError: RESTStandardError{
 			Code:   code,

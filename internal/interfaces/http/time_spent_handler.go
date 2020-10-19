@@ -12,9 +12,9 @@ import (
 )
 
 type TimeSpentHandler struct {
-	TimeSpentUseCase domain.TimeSpentUseCase
-	Validator        infra.Validator
-	JWTUtil          *auth.JWTUtil
+	timeSpentUseCase domain.TimeSpentUseCase
+	validator        infra.Validator
+	jwtUtil          *auth.JWTUtil
 }
 
 func NewTimeSpentHandler(
@@ -27,23 +27,23 @@ func NewTimeSpentHandler(
 }
 
 func (tsh *TimeSpentHandler) HandleGetTimeSpent(c echo.Context) (err error) {
-	tsu := tsh.TimeSpentUseCase
-	ju := tsh.JWTUtil
+	tsu := tsh.timeSpentUseCase
+	ju := tsh.jwtUtil
 	ts := c.QueryParam("ts")
 	claims := ju.GetContextToken(c)
 	user := new(domain.UserModel)
 	user.ID = claims.UID
 
 	// validation
-	if err := tsh.Validator.Empty("user ID", user.ID); err != nil {
-		return c.JSON(http.StatusBadRequest, infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", err))
+	if err := tsh.validator.Empty("user ID", user.ID); err != nil {
+		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", err))
 	}
-	if err := tsh.Validator.Empty("ts", ts); err != nil {
-		return c.JSON(http.StatusBadRequest, infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", err))
+	if err := tsh.validator.Empty("ts", ts); err != nil {
+		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", err))
 	}
 	at, err := time.Parse(time.RFC3339, ts)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*infra.FieldError{{
+		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*infra.FieldError{{
 			Domain: "ts",
 			Reason: fmt.Sprintf("ts must be int RFC3339 layout, %s", err.Error()),
 		}}))

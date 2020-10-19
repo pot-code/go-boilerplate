@@ -4,11 +4,12 @@ import (
 	"log"
 
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
-	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/uuid"
 	ihttp "github.com/pot-code/go-boilerplate/internal/interfaces/http"
-	"github.com/pot-code/go-boilerplate/internal/repository"
-	"github.com/pot-code/go-boilerplate/internal/usecase"
+	"github.com/pot-code/go-boilerplate/internal/lesson"
+	"github.com/pot-code/go-boilerplate/internal/time_spent"
+	"github.com/pot-code/go-boilerplate/internal/user"
 	"go.uber.org/zap"
 )
 
@@ -53,15 +54,15 @@ func main() {
 		zap.Any("config", option.Database),
 	)
 
-	UUIDGenerator := infra.NewNanoIDGenerator(option.Security.IDLength)
-	UserRepo := auth.NewUserRepository(dbConn, UUIDGenerator)
-	UserUserCase := auth.NewUserUseCase(UserRepo)
+	UUIDGenerator := uuid.NewNanoIDGenerator(option.Security.IDLength)
+	UserRepo := user.NewUserRepository(dbConn, UUIDGenerator)
+	UserUserCase := user.NewUserUseCase(UserRepo)
 
-	LessonRepo := repository.NewLessonRepository(dbConn)
-	LessonUseCase := usecase.NewLessonUseCase(LessonRepo)
+	LessonRepo := lesson.NewLessonRepository(dbConn)
+	LessonUseCase := lesson.NewLessonUseCase(LessonRepo)
 
-	TimeSpentRepo := repository.NewTimeSpentRepository(dbConn)
-	TimeSpentUseCase := usecase.NewTimeSpentUseCase(TimeSpentRepo)
+	TimeSpentRepo := time_spent.NewTimeSpentRepository(dbConn)
+	TimeSpentUseCase := time_spent.NewTimeSpentUseCase(TimeSpentRepo)
 
-	ihttp.Serve(option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
+	ihttp.Serve(dbConn, option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
 }

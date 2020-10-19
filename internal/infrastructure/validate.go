@@ -13,26 +13,21 @@ import (
 	zh_translations "github.com/go-playground/validator/v10/translations/zh"
 )
 
+// FieldError field error to be nested by other errors
+type FieldError struct {
+	Domain string `json:"domain"`
+	Reason string `json:"reason"`
+}
+
+func NewFieldError(domain string, reason string) *FieldError {
+	return &FieldError{domain, reason}
+}
+
 // Validator .
 type Validator interface {
 	Struct(s interface{}) []*FieldError
 	Empty(varName string, s interface{}) []*FieldError
 	AllEmpty(names []string, fields ...interface{}) *FieldError
-}
-
-func getValidateErrorMessage(err validator.FieldError) string {
-	tag := err.Tag()
-	switch tag {
-	case "required":
-		return "required"
-	case "email":
-		return "Should be in email form"
-	case "min":
-		return fmt.Sprintf("Length should be longer than or equal to %s", err.Param())
-	case "max":
-		return fmt.Sprintf("Length should be shorter than or equal to %s;", err.Param())
-	}
-	return tag
 }
 
 // ValidatorV10 Validator implementation using go-playground
@@ -73,10 +68,7 @@ func (v ValidatorV10) Struct(s interface{}) []*FieldError {
 	validate := v.core
 	if err := validate.Struct(s); err != nil {
 		for _, item := range err.(validator.ValidationErrors) {
-			result = append(result, &FieldError{
-				Domain: item.Field(),
-				Reason: item.Translate(v.trans),
-			})
+			result = append(result, NewFieldError(item.Field(), item.Translate(v.trans)))
 		}
 		return result
 	}
@@ -90,10 +82,7 @@ func (v ValidatorV10) Empty(varName string, s interface{}) []*FieldError {
 	if err := validate.Var(s, "required"); err != nil {
 		for range err.(validator.ValidationErrors) {
 			msg := fmt.Sprintf("%s is required", varName)
-			result = append(result, &FieldError{
-				Domain: varName,
-				Reason: msg,
-			})
+			result = append(result, NewFieldError(varName, msg))
 		}
 		return result
 	}
@@ -117,10 +106,7 @@ func (v ValidatorV10) AllEmpty(names []string, fields ...interface{}) *FieldErro
 		}
 	}
 	if !nonEmpty {
-		return &FieldError{
-			Domain: strings.Join(names, ","),
-			Reason: "One of the fields should not be empty",
-		}
+		return NewFieldError(strings.Join(names, ","), "One of the fields should not be empty")
 	}
 	return nil
 }

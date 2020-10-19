@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"go.uber.org/zap"
 )
 
@@ -19,9 +18,7 @@ type ErrorHandlingOption struct {
 func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 	custom := &ErrorHandlingOption{
 		Handler: func(c echo.Context, traceID string, err error) {
-			c.JSON(http.StatusInternalServerError,
-				infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
-			)
+			c.String(http.StatusInternalServerError, err.Error())
 		},
 	}
 	if len(options) > 0 {
@@ -60,9 +57,7 @@ func ErrorHandling(options ...*ErrorHandlingOption) echo.MiddlewareFunc {
 				if v, ok := err.(*echo.HTTPError); ok {
 					c.String(v.Code, v.Error())
 				} else {
-					c.JSON(http.StatusInternalServerError,
-						infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
-					)
+					handler(c, traceID, err)
 				}
 			}
 			return nil

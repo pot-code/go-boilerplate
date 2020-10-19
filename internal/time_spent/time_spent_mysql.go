@@ -1,4 +1,4 @@
-package repository
+package time_spent
 
 import (
 	"context"

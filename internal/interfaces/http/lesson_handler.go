@@ -9,8 +9,8 @@ import (
 )
 
 type LessonHandler struct {
-	LessonUseCase domain.LessonUseCase
-	JWTUtil       *auth.JWTUtil
+	lessonUseCase domain.LessonUseCase
+	jwtUtil       *auth.JWTUtil
 }
 
 func NewLessonHandler(LessonUseCase domain.LessonUseCase, JWTUtil *auth.JWTUtil) *LessonHandler {
@@ -19,8 +19,8 @@ func NewLessonHandler(LessonUseCase domain.LessonUseCase, JWTUtil *auth.JWTUtil)
 }
 
 func (lh *LessonHandler) HandleGetLessonProgress(c echo.Context) (err error) {
-	LessonUseCase := lh.LessonUseCase
-	ju := lh.JWTUtil
+	LessonUseCase := lh.lessonUseCase
+	ju := lh.jwtUtil
 
 	claims := ju.GetContextToken(c)
 	user := new(domain.UserModel)

@@ -1,4 +1,4 @@
-package auth
+package user
 
 import (
 	"context"
@@ -6,16 +6,16 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pot-code/go-boilerplate/internal/domain"
-	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
+	"github.com/pot-code/go-boilerplate/internal/infrastructure/uuid"
 )
 
 type UserRepository struct {
 	Conn          driver.ITransactionalDB
-	UUIDGenerator infra.UUIDGenerator
+	UUIDGenerator uuid.UUIDGenerator
 }
 
-func NewUserRepository(Conn driver.ITransactionalDB, UUIDGenerator infra.UUIDGenerator) *UserRepository {
+func NewUserRepository(Conn driver.ITransactionalDB, UUIDGenerator uuid.UUIDGenerator) *UserRepository {
 	return &UserRepository{Conn, UUIDGenerator}
 }
 

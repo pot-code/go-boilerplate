@@ -4,6 +4,7 @@ import (
 	"expvar"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -37,9 +38,10 @@ type route struct {
 
 // Serve create http transport server
 func Serve(
+	conn driver.ITransactionalDB,
 	option *infra.AppConfig,
 	UserUserCase domain.UserUseCase,
-	UserRepo *auth.UserRepository,
+	UserRepo domain.UserRepository,
 	LessonUseCase domain.LessonUseCase,
 	TimeSpentUseCase domain.TimeSpentUseCase,
 	logger *zap.Logger,
@@ -64,6 +66,11 @@ func Serve(
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
 			LoggerKey: infra.ContextLoggerKey,
+			Handler: func(c echo.Context, traceID string, err error) {
+				c.JSON(http.StatusInternalServerError,
+					NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
+				)
+			},
 		},
 	))
 	app.Use(echo_middleware.Secure())
@@ -76,7 +83,7 @@ func Serve(
 	}))
 
 	UserHandler := NewUserHandler(
-		jwtUtil, UserRepo, rdb, UserUserCase,
+		jwtUtil, conn, UserRepo, rdb, UserUserCase,
 		option.Security.MaxLoginAttempts,
 		option.Security.RetryTimeout,
 		validator,

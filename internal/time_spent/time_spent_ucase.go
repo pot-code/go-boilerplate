@@ -1,4 +1,4 @@
-package usecase
+package time_spent
 
 import (
 	"context"

@@ -87,22 +87,22 @@ func createDevLogger(cfg *LoggingConfig) (zapcore.Core, error) {
 
 func createProductionLogger(cfg *LoggingConfig) (zapcore.Core, error) {
 	logEnabler := getLevelEnabler(cfg)
-	elkEncoderConfig := zap.NewProductionEncoderConfig()
-	elkEncoderConfig.EncodeTime = zapcore.TimeEncoder(func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	ecsEncoderConfig := zap.NewProductionEncoderConfig()
+	ecsEncoderConfig.EncodeTime = zapcore.TimeEncoder(func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.UTC().Format("2006-01-02T15:04:05.000Z"))
 	})
-	elkEncoderConfig.TimeKey = "@timestamp"
-	elkEncoderConfig.MessageKey = "message"
-	elkEncoderConfig.LevelKey = "log.level"
-	elkEncoderConfig.CallerKey = "log.origin.file.name"
-	elkEncoderConfig.StacktraceKey = "error.stack_trace"
-	elkEncoder := zapcore.NewJSONEncoder(elkEncoderConfig)
+	ecsEncoderConfig.TimeKey = "@timestamp"
+	ecsEncoderConfig.MessageKey = "message"
+	ecsEncoderConfig.LevelKey = "log.level"
+	ecsEncoderConfig.CallerKey = "log.origin.file.name"
+	ecsEncoderConfig.StacktraceKey = "error.stack_trace"
+	ecsEncoder := zapcore.NewJSONEncoder(ecsEncoderConfig)
 
 	if cfg.FilePath != "" {
 		elkOutput, err := getFileSyncer(cfg)
-		return zapcore.NewCore(elkEncoder, elkOutput, logEnabler), err
+		return zapcore.NewCore(ecsEncoder, elkOutput, logEnabler), err
 	}
-	return zapcore.NewCore(elkEncoder, os.Stderr, logEnabler), nil
+	return zapcore.NewCore(ecsEncoder, os.Stderr, logEnabler), nil
 }
 
 func getFileSyncer(cfg *LoggingConfig) (zapcore.WriteSyncer, error) {

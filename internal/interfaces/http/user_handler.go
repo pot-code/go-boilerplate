@@ -23,13 +23,14 @@ var (
 
 // UserHandler user related operations
 type UserHandler struct {
-	JWTUtil        *auth.JWTUtil
-	UserRepository *auth.UserRepository
-	KVStore        driver.KeyValueDB
-	UserUseCase    domain.UserUseCase
-	Validator      infra.Validator
-	MaximumRetry   int
-	RetryTimeout   time.Duration
+	jwtUtil        *auth.JWTUtil
+	conn           driver.ITransactionalDB
+	userRepository domain.UserRepository
+	kvStore        driver.KeyValueDB
+	userUseCase    domain.UserUseCase
+	validator      infra.Validator
+	maximumRetry   int
+	retryTimeout   time.Duration
 }
 
 type UserLoginModel struct {
@@ -59,22 +60,23 @@ func (ucm *UserCheckModel) ToDomain() *domain.UserModel {
 // NewUserHandler create an user controller instance
 func NewUserHandler(
 	JWTUtil *auth.JWTUtil,
-	UserRepository *auth.UserRepository,
+	conn driver.ITransactionalDB,
+	UserRepository domain.UserRepository,
 	KVStore driver.KeyValueDB,
 	UserUseCase domain.UserUseCase,
 	MaximumRetry int,
 	RetryTimeout time.Duration,
 	Validator infra.Validator,
 ) *UserHandler {
-	handler := &UserHandler{JWTUtil, UserRepository, KVStore, UserUseCase, Validator, MaximumRetry, RetryTimeout}
+	handler := &UserHandler{JWTUtil, conn, UserRepository, KVStore, UserUseCase, Validator, MaximumRetry, RetryTimeout}
 	return handler
 }
 
 // HandleSignIn ...
 func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
-	ju := uh.JWTUtil
-	repo := uh.UserRepository
-	conn := repo.Conn
+	ju := uh.jwtUtil
+	repo := uh.userRepository
+	conn := uh.conn
 	ctx := c.Request().Context()
 
 	// parse body
@@ -82,11 +84,11 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	if err = c.Bind(&post); err != nil {
 		// internal := err.(*echo.HTTPError).Internal
 		return c.JSON(http.StatusUnprocessableEntity,
-			infra.NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity"))
+			NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity"))
 	}
-	if err := uh.Validator.Struct(post); err != nil {
+	if err := uh.validator.Struct(post); err != nil {
 		return c.JSON(http.StatusBadRequest,
-			infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate credentials", err))
+			NewRESTValidationError(http.StatusBadRequest, "Failed to validate credentials", err))
 	}
 
 	tx, err := conn.BeginTx(ctx, &driver.TxOptions{
@@ -94,7 +96,7 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	})
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()))
+			NewRESTStandardError(http.StatusInternalServerError, err.Error()))
 	}
 	defer tx.Commit(ctx)
 
@@ -102,30 +104,30 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	user, err := repo.FindByCredential(ctx, post.ToDomain())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, err.Error()))
+			NewRESTStandardError(http.StatusInternalServerError, err.Error()))
 	}
 	if user == nil {
-		return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
+		return c.JSON(http.StatusUnauthorized, NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
 	}
 	now := time.Now().Unix() // seconds
-	if user.LoginRetry >= uh.MaximumRetry && now-user.LastLogin < int64(uh.RetryTimeout.Seconds()) {
-		return c.JSON(http.StatusForbidden, infra.NewRESTStandardError(http.StatusForbidden, ErrUserTooManyRetry.Error()))
+	if user.LoginRetry >= uh.maximumRetry && now-user.LastLogin < int64(uh.retryTimeout.Seconds()) {
+		return c.JSON(http.StatusForbidden, NewRESTStandardError(http.StatusForbidden, ErrUserTooManyRetry.Error()))
 	}
 
 	// check credentials
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(post.Password)); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
-			if user.LoginRetry == uh.MaximumRetry {
+			if user.LoginRetry == uh.maximumRetry {
 				user.LoginRetry = 1
 			} else {
 				user.LoginRetry++
 			}
 			user.LastLogin = now
 			repo.UpdateUser(ctx, user)
-			return c.JSON(http.StatusUnauthorized, infra.NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
+			return c.JSON(http.StatusUnauthorized, NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
 		}
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential"))
+			NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential"))
 	}
 
 	// reset retry number
@@ -144,20 +146,20 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 
 // HandleSignUp ...
 func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
-	UserUseCase := uh.UserUseCase
+	UserUseCase := uh.userUseCase
 	post := new(domain.UserModel)
 	ctx := c.Request().Context()
 
 	if err = c.Bind(&post); err != nil {
 		// internal := err.(*echo.HTTPError).Internal
 		return c.JSON(http.StatusUnprocessableEntity,
-			infra.NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity"))
+			NewRESTStandardError(http.StatusUnprocessableEntity, "Failed to bind user entity"))
 	}
 
 	// validation
-	if err := uh.Validator.Struct(post); err != nil {
+	if err := uh.validator.Struct(post); err != nil {
 		return c.JSON(http.StatusBadRequest,
-			infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate fields", err))
+			NewRESTValidationError(http.StatusBadRequest, "Failed to validate fields", err))
 	}
 
 	// hash password
@@ -165,14 +167,14 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 		post.Password = string(password)
 	} else {
 		return c.JSON(http.StatusInternalServerError,
-			infra.NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential"))
+			NewRESTStandardError(http.StatusInternalServerError, "Failed to process user credential"))
 	}
 
 	// register
 	_, err = UserUseCase.SignUp(ctx, post)
 	if err != nil {
 		if errors.Is(err, domain.ErrDuplicatedUser) {
-			return c.JSON(http.StatusConflict, infra.NewRESTStandardError(http.StatusConflict, err.Error()))
+			return c.JSON(http.StatusConflict, NewRESTStandardError(http.StatusConflict, err.Error()))
 		}
 		return err
 	}
@@ -181,8 +183,8 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 
 // HandleSignOut ...
 func (uh *UserHandler) HandleSignOut(c echo.Context) (err error) {
-	ju := uh.JWTUtil
-	kv := uh.KVStore
+	ju := uh.jwtUtil
+	kv := uh.kvStore
 
 	if tokenStr, err := ju.ExtractToken(c); err == nil {
 		if token, err := ju.Validate(tokenStr); err == nil {
@@ -196,18 +198,18 @@ func (uh *UserHandler) HandleSignOut(c echo.Context) (err error) {
 
 // HandleUserExists ...
 func (uh *UserHandler) HandleUserExists(c echo.Context) (err error) {
-	UserUseCase := uh.UserUseCase
+	UserUseCase := uh.userUseCase
 	ctx := c.Request().Context()
 	post := new(UserCheckModel)
 	post.Username = c.QueryParam("username")
 	post.Email = c.QueryParam("email")
 
-	if err := uh.Validator.AllEmpty([]string{"username", "email"}, post.Username, post.Email); err != nil {
-		return c.JSON(http.StatusBadRequest, infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*infra.FieldError{err}))
+	if err := uh.validator.AllEmpty([]string{"username", "email"}, post.Username, post.Email); err != nil {
+		return c.JSON(http.StatusBadRequest, NewRESTValidationError(http.StatusBadRequest, "Failed to validate params", []*infra.FieldError{err}))
 	}
-	if err := uh.Validator.Struct(post); err != nil {
+	if err := uh.validator.Struct(post); err != nil {
 		return c.JSON(http.StatusBadRequest,
-			infra.NewRESTValidationError(http.StatusBadRequest, "Failed to validate fields", err))
+			NewRESTValidationError(http.StatusBadRequest, "Failed to validate fields", err))
 	}
 
 	existing, err := UserUseCase.Exists(ctx, post.ToDomain())

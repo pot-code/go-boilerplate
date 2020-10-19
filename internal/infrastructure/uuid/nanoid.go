@@ -1,12 +1,6 @@
-package infra
+package uuid
 
-import (
-	gonanoid "github.com/matoous/go-nanoid"
-)
-
-type UUIDGenerator interface {
-	Generate() (string, error)
-}
+import gonanoid "github.com/matoous/go-nanoid"
 
 type NanoIDGenerator struct {
 	Length int
