@@ -19,6 +19,8 @@ type PlaygroundV10 struct {
 	trans ut.Translator
 }
 
+var _ Validator = &PlaygroundV10{}
+
 // NewValidator create a new Validator
 func NewValidator() *PlaygroundV10 {
 	en := en.New()

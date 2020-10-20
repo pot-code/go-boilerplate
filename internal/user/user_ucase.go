@@ -12,6 +12,8 @@ type UserUseCase struct {
 	UserRepository domain.UserRepository
 }
 
+var _ domain.UserUseCase = &UserUseCase{}
+
 // NewUserUseCase ...
 func NewUserUseCase(
 	UserRepository domain.UserRepository,

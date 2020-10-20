@@ -12,6 +12,8 @@ type TimeSpentRepository struct {
 	Conn driver.ITransactionalDB `dep:""`
 }
 
+var _ domain.TimeSpentRepository = &TimeSpentRepository{}
+
 func NewTimeSpentRepository(Conn driver.ITransactionalDB) *TimeSpentRepository {
 	return &TimeSpentRepository{
 		Conn: Conn,

@@ -15,6 +15,8 @@ type UserRepository struct {
 	UUIDGenerator uuid.UUIDGenerator
 }
 
+var _ domain.UserRepository = &UserRepository{}
+
 func NewUserRepository(Conn driver.ITransactionalDB, UUIDGenerator uuid.UUIDGenerator) *UserRepository {
 	return &UserRepository{Conn, UUIDGenerator}
 }

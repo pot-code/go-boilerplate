@@ -11,6 +11,8 @@ type LessonRepository struct {
 	Conn driver.ITransactionalDB `dep:""`
 }
 
+var _ domain.LessonRepository = &LessonRepository{}
+
 func NewLessonRepository(Conn driver.ITransactionalDB) *LessonRepository {
 	return &LessonRepository{
 		Conn: Conn,

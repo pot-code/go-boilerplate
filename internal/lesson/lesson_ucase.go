@@ -12,6 +12,8 @@ type LessonUseCase struct {
 	LessonRepository domain.LessonRepository
 }
 
+var _ domain.LessonUseCase = &LessonUseCase{}
+
 // NewLessonUseCase ...
 func NewLessonUseCase(
 	LessonRepository domain.LessonRepository,

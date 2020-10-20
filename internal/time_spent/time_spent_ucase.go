@@ -13,6 +13,8 @@ type TimeSpentUseCase struct {
 	TimeSpentRepository domain.TimeSpentRepository
 }
 
+var _ domain.TimeSpentUseCase = &TimeSpentUseCase{}
+
 // NewTimeSpentUseCase ...
 func NewTimeSpentUseCase(
 	TimeSpentRepository domain.TimeSpentRepository,

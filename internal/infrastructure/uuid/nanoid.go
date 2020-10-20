@@ -6,6 +6,8 @@ type NanoIDGenerator struct {
 	Length int
 }
 
+var _ UUIDGenerator = &NanoIDGenerator{}
+
 func NewNanoIDGenerator(length int) *NanoIDGenerator {
 	if length < 1 {
 		panic("length must be larger than 1")
