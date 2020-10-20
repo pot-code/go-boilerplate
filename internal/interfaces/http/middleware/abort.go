@@ -1,12 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"golang.org/x/net/context"
 )
 
 // AbortRequestOption option for AbortRequest
