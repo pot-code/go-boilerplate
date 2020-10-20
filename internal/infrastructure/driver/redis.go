@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,7 +16,10 @@ type RedisClient struct {
 	conn *redis.Client
 }
 
-// NewRedisClient create a redis client
+// interface assertion
+var _ KeyValueDB = &RedisClient{}
+
+// NewRedisClient create an redis client
 func NewRedisClient(host string, port int, password string) *RedisClient {
 	conn := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
@@ -40,9 +44,17 @@ func (rdb *RedisClient) Get(key string) (string, error) {
 // Exists implement KeyValueDB
 func (rdb *RedisClient) Exists(key string) (bool, error) {
 	cmd := rdb.conn.Exists(ctx, key)
-	if ok, err := cmd.Result(); err == nil {
-		return ok == 1, nil
-	} else {
-		return false, err
+	ok, err := cmd.Result()
+	return ok == 1, err
+}
+
+// Ping health check
+func (rdb *RedisClient) Ping() error {
+	cmd := rdb.conn.Ping(ctx)
+	if r, err := cmd.Result(); err != nil {
+		return err
+	} else if r != "PONG" {
+		return errors.New("")
 	}
+	return nil
 }

@@ -97,6 +97,12 @@ spec:
       volumeMounts:
         - mountPath: /var/log/app
           name: log
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 8081
+        initialDelaySeconds: 3
+        periodSeconds: 10
     - name: filebeat
       image: elastic/filebeat:7.9.2
       resources:

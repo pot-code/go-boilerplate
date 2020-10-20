@@ -49,10 +49,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create DB connection: %s\n", err)
 	}
-	logger.Debug("Create mysql connection instance", zap.String("db.driver", option.Database.Driver),
+	logger.Debug("Create database instance", zap.String("db.driver", option.Database.Driver),
 		zap.String("db.schema", option.Database.Schema),
 		zap.String("db.host", option.Database.Host),
-		zap.Any("config", option.Database),
+	)
+
+	rdb := driver.NewRedisClient(option.KVStore.Host, option.KVStore.Port, option.KVStore.Password)
+	logger.Debug("Create KV database instance", zap.String("db.driver", "redis"),
+		zap.String("db.host", option.KVStore.Host),
+		zap.Int("db.port", option.KVStore.Port),
 	)
 
 	UUIDGenerator := uuid.NewNanoIDGenerator(option.Security.IDLength)
@@ -65,5 +70,5 @@ func main() {
 	TimeSpentRepo := time_spent.NewTimeSpentRepository(dbConn)
 	TimeSpentUseCase := time_spent.NewTimeSpentUseCase(TimeSpentRepo)
 
-	ihttp.Serve(dbConn, option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
+	ihttp.Serve(dbConn, rdb, option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
 }

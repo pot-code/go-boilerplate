@@ -14,7 +14,6 @@ import (
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
-	"github.com/pot-code/go-boilerplate/internal/infrastructure/logging"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
 	"github.com/pot-code/go-boilerplate/internal/interfaces/http/middleware"
 	"go.elastic.co/apm/module/apmechov4"
@@ -22,8 +21,9 @@ import (
 )
 
 type endpoint struct {
-	apiVersion string
-	groups     []*apiGroup
+	apiVersion  string
+	middlewares []echo.MiddlewareFunc
+	groups      []*apiGroup
 }
 
 type apiGroup struct {
@@ -42,6 +42,7 @@ type route struct {
 // Serve create http transport server
 func Serve(
 	conn driver.ITransactionalDB,
+	rdb driver.KeyValueDB,
 	option *infra.AppConfig,
 	UserUserCase domain.UserUseCase,
 	UserRepo domain.UserRepository,
@@ -50,7 +51,6 @@ func Serve(
 	logger *zap.Logger,
 ) {
 	app := echo.New()
-	rdb := driver.NewRedisClient(option.KVStore.Host, option.KVStore.Port, option.KVStore.Password)
 	jwtUtil := auth.NewJWTUtil(option.Security.JWTMethod,
 		option.Security.JWTSecret,
 		option.Security.TokenName,
@@ -64,16 +64,26 @@ func Serve(
 	})
 	refreshMiddleware := middleware.RefreshToken(jwtUtil)
 
-	app.Use(echo_middleware.RequestID())
-	app.Use(middleware.Logging(logger))
-	app.Use(middleware.SetTraceLogger(logger))
+	registerLivenessProbe(app, conn, rdb)
+	if option.Env == infra.EnvDevelopment {
+		registerProfileEndpoints(app)
+	}
+	app.Use(middleware.Logging(logger, &middleware.LoggingConfig{
+		Skipper: func(e echo.Context) bool {
+			if strings.HasPrefix(e.Request().RequestURI, "/healthz") {
+				return true
+			}
+			return false
+		},
+	}))
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
-			LoggerKey: logging.ContextLoggerKey,
-			Handler: func(c echo.Context, traceID string, err error) {
+			Handler: func(c echo.Context, err error) {
+				traceID := c.Response().Header().Get(echo.HeaderXRequestID)
 				c.JSON(http.StatusInternalServerError,
 					NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
 				)
+				logger.Error(err.Error(), zap.String("trace.id", traceID))
 			},
 		},
 	))
@@ -95,49 +105,15 @@ func Serve(
 	LessonHandler := NewLessonHandler(LessonUseCase, jwtUtil)
 	TimeSpentHandler := NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
 
-	if option.Env == infra.EnvDevelopment {
-		registerProfileEndpoints(app)
-	}
-
-	v1Endpoint := &endpoint{
-		apiVersion: "api/v1",
-		groups: []*apiGroup{
-			{
-				prefix: "/user",
-				routes: []*route{
-					{"POST", "/login", UserHandler.HandleSignIn, nil},
-					{"PUT", "/sign-out", UserHandler.HandleSignOut, nil},
-					{"POST", "/sign-up", UserHandler.HandleSignUp, nil},
-					{"GET", "/exists", UserHandler.HandleUserExists, nil},
-				},
-			},
-			{
-				prefix:      "/lesson",
-				middlewares: []echo.MiddlewareFunc{jwtMiddleware, refreshMiddleware},
-				routes: []*route{
-					{"GET", "/progress", LessonHandler.HandleGetLessonProgress, nil},
-				},
-			},
-			{
-				prefix:      "/time-spent",
-				middlewares: []echo.MiddlewareFunc{jwtMiddleware, refreshMiddleware},
-				routes: []*route{
-					{"GET", "/", TimeSpentHandler.HandleGetTimeSpent, nil},
-				},
-			},
-			{
-				prefix: "/ws",
-				routes: []*route{
-					{"GET", "/echo", websocket.WithHeartbeat(HandleEcho), nil},
-				},
-			},
-		},
-	}
-
-	createEndpoint(app, v1Endpoint)
+	createEndpoint(app, v1Endpoint(
+		websocket,
+		UserHandler,
+		LessonHandler,
+		TimeSpentHandler,
+		jwtMiddleware, refreshMiddleware, echo_middleware.RequestID(), middleware.SetTraceLogger(logger),
+	))
 
 	printRoutes(app, logger)
-
 	if err := app.Start(fmt.Sprintf("%s:%d", option.Host, option.Port)); err != nil {
 		log.Fatal(err)
 	}
@@ -151,6 +127,17 @@ func printRoutes(app *echo.Echo, logger *zap.Logger) {
 			logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
 		}
 	}
+}
+
+func registerLivenessProbe(app *echo.Echo, db driver.ITransactionalDB, rdb driver.KeyValueDB) {
+	app.GET("/healthz", func(c echo.Context) error {
+		if db.Ping() == nil && rdb.Ping() == nil {
+			c.NoContent(http.StatusOK)
+		} else {
+			c.NoContent(http.StatusServiceUnavailable)
+		}
+		return nil
+	})
 }
 
 func registerProfileEndpoints(app *echo.Echo) {
@@ -185,9 +172,9 @@ func createEndpoint(app *echo.Echo, def *endpoint) {
 
 	var root *echo.Group
 	if strings.HasPrefix(def.apiVersion, "/") {
-		root = app.Group(def.apiVersion)
+		root = app.Group(def.apiVersion, def.middlewares...)
 	} else {
-		root = app.Group("/" + def.apiVersion)
+		root = app.Group("/"+def.apiVersion, def.middlewares...)
 	}
 
 	for _, group := range def.groups {

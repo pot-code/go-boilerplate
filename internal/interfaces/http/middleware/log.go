@@ -4,14 +4,33 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/logging"
 	"go.uber.org/zap"
 )
 
+type LoggingConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper middleware.Skipper
+}
+
 // Logging create a logging middleware with zap logger
-func Logging(base *zap.Logger) echo.MiddlewareFunc {
+func Logging(base *zap.Logger, options ...*LoggingConfig) echo.MiddlewareFunc {
+	cfg := &LoggingConfig{
+		Skipper: middleware.DefaultSkipper,
+	}
+	if len(options) > 0 {
+		option := options[0]
+		if option.Skipper != nil {
+			cfg.Skipper = option.Skipper
+		}
+	}
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if cfg.Skipper(c) {
+				return next(c)
+			}
+			err := next(c)
 			rid := c.Response().Header().Get(echo.HeaderXRequestID)
 			logger := base.With(
 				zap.String("trace.id", rid),
@@ -26,7 +45,6 @@ func Logging(base *zap.Logger) echo.MiddlewareFunc {
 					zap.Strings("route.params.value", c.ParamValues()),
 				)
 			}
-			err := next(c)
 			code := c.Response().Status
 			logger.Info(http.StatusText(code), zap.Int("http.response.status_code", code))
 			return err

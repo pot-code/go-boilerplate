@@ -74,6 +74,10 @@ func (mw *SQLWrapper) Rollback(ctx context.Context) error {
 	return nil
 }
 
+func (mw *SQLWrapper) Ping() error {
+	return mw.db.Ping()
+}
+
 func (mw *SQLWrapper) Close(ctx context.Context) error {
 	return mw.db.Close()
 }
@@ -202,6 +206,10 @@ func (mwt *SQLWrapperTx) Rollback(ctx context.Context) error {
 		)
 	}
 	return err
+}
+
+func (mwt *SQLWrapperTx) Ping() error {
+	return nil
 }
 
 func (mwt *SQLWrapperTx) Close(ctx context.Context) error {

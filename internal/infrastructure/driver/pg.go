@@ -114,6 +114,10 @@ func (pw *PGWrapper) Rollback(ctx context.Context) error {
 	return nil
 }
 
+func (pw *PGWrapper) Ping() error {
+	return nil
+}
+
 // Close close the whole pool, you better know what you are doing
 func (pw *PGWrapper) Close(ctx context.Context) error {
 	pw.db.Close()
@@ -244,6 +248,10 @@ func (pwt *PGWrapperTx) Rollback(ctx context.Context) error {
 		)
 	}
 	return err
+}
+
+func (pwt *PGWrapperTx) Ping() error {
+	return nil
 }
 
 func (pwt *PGWrapperTx) Close(ctx context.Context) error {
