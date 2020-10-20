@@ -13,8 +13,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-// EnvPrefix env prefix for viper
-const EnvPrefix = "GOAPP"
+const (
+	// EnvPrefix env prefix for viper
+	EnvPrefix      = "GOAPP"
+	EnvProduction  = "production"
+	EnvDevelopment = "development"
+)
 
 // AppConfig App option object
 type AppConfig struct {
@@ -64,7 +68,7 @@ func InitConfig() (*AppConfig, error) {
 	pflag.String("host", "", "binding address")
 	pflag.String("app_id", "", "application identifier (required)")
 	pflag.Duration("request_timeout", 30*time.Second, "abort the request after the timeout")
-	pflag.String("env", "development", "runtime environment, can be 'development' or 'production'")
+	pflag.String("env", EnvDevelopment, "runtime environment, can be 'development' or 'production'")
 	pflag.Int("port", 8081, "listening port")
 	pflag.Duration("session_timeout", 30*time.Minute, "JWT lifetime(m, s and h units are supported), eg.30m")
 	pflag.Duration("session_refresh", 5*time.Minute, "session refresh threshold(m, s and h units are supported), eg.5m")

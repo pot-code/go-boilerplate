@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -38,9 +39,9 @@ func NewLogger(cfg *Config) (*zap.Logger, error) {
 		err  error
 	)
 	switch cfg.Env {
-	case "development":
+	case infra.EnvDevelopment:
 		core, err = createDevLogger(cfg)
-	case "production":
+	case infra.EnvProduction:
 		core, err = createProductionLogger(cfg)
 	default:
 		core, err = createDevLogger(cfg)

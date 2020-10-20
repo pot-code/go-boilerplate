@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -93,12 +94,10 @@ func Serve(
 	)
 	LessonHandler := NewLessonHandler(LessonUseCase, jwtUtil)
 	TimeSpentHandler := NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
-	expvarHandler := expvar.Handler()
 
-	app.GET("/debug/vars", func(c echo.Context) error {
-		expvarHandler.ServeHTTP(c.Response().Writer, c.Request())
-		return nil
-	}, jwtMiddleware)
+	if option.Env == infra.EnvDevelopment {
+		registerProfileEndpoints(app)
+	}
 
 	v1Endpoint := &endpoint{
 		apiVersion: "api/v1",
@@ -152,6 +151,33 @@ func printRoutes(app *echo.Echo, logger *zap.Logger) {
 			logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
 		}
 	}
+}
+
+func registerProfileEndpoints(app *echo.Echo) {
+	expvarHandler := expvar.Handler()
+	app.GET("/debug/vars", func(c echo.Context) error {
+		expvarHandler.ServeHTTP(c.Response().Writer, c.Request())
+		return nil
+	})
+	app.GET("/debug/pprof/", func(c echo.Context) error {
+		pprof.Index(c.Response().Writer, c.Request())
+		return nil
+	})
+	app.GET("/debug/pprof/:name", func(c echo.Context) error {
+		switch c.Param("name") {
+		case "cmdline":
+			pprof.Cmdline(c.Response().Writer, c.Request())
+		case "profile":
+			pprof.Profile(c.Response().Writer, c.Request())
+		case "symbol":
+			pprof.Symbol(c.Response().Writer, c.Request())
+		case "trace":
+			pprof.Trace(c.Response().Writer, c.Request())
+		default:
+			pprof.Handler(c.Param("name")).ServeHTTP(c.Response().Writer, c.Request())
+		}
+		return nil
+	})
 }
 
 func createEndpoint(app *echo.Echo, def *endpoint) {
