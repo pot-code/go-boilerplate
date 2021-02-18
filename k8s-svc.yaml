@@ -35,7 +35,7 @@ spec:
           resources:
             requests:
               memory: '128Mi'
-              cpu: '500m'
+              cpu: '200m'
           env:
             - name: REDIS_PASS
               valueFrom:

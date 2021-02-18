@@ -50,8 +50,8 @@ spec:
       image: potdockercode/go-boilerplate-backend
       resources:
         limits:
-          memory: '128Mi'
-          cpu: '500m'
+          memory: '256Mi'
+          cpu: '1'
       ports:
         - containerPort: 8081
       env:
@@ -89,11 +89,11 @@ spec:
         - name: GOAPP_APP_ID
           value: go-boilerplate
         - name: GOAPP_ENV
-          value: production
-        - name: GOAPP_LOGGING_FILE_PATH
-          value: /var/log/app/app.log
+          value: development
+        # - name: GOAPP_LOGGING_FILE_PATH
+        #   value: /var/log/app/app.log
         - name: GOAPP_LOGGING_LEVEL
-          value: info
+          value: debug
       volumeMounts:
         - mountPath: /var/log/app
           name: log
@@ -103,32 +103,32 @@ spec:
           port: 8081
         initialDelaySeconds: 3
         periodSeconds: 10
-    - name: filebeat
-      image: elastic/filebeat:7.9.2
-      resources:
-        limits:
-          memory: '128Mi'
-          cpu: '500m'
-      args: ['-c', '/etc/filebeat.yml', '-e']
-      env:
-        - name: ELASTICSEARCH_HOST
-          value: host.minikube.internal
-        - name: ELASTICSEARCH_PORT
-          value: '9200'
-      volumeMounts:
-        - mountPath: /etc/filebeat.yml
-          name: filebeat-config
-          subPath: filebeat.yml
-          readOnly: true
-        - mountPath: /var/log/app
-          name: log
-          readOnly: true
+    # - name: filebeat
+    #   image: elastic/filebeat:7.9.2
+    #   resources:
+    #     limits:
+    #       memory: '128Mi'
+    #       cpu: '200m'
+    #   args: ['-c', '/etc/filebeat.yml', '-e']
+    #   env:
+    #     - name: ELASTICSEARCH_HOST
+    #       value: host.minikube.internal
+    #     - name: ELASTICSEARCH_PORT
+    #       value: '9200'
+    #   volumeMounts:
+    #     - mountPath: /etc/filebeat.yml
+    #       name: filebeat-config
+    #       subPath: filebeat.yml
+    #       readOnly: true
+    #     - mountPath: /var/log/app
+    #       name: log
+    #       readOnly: true
     - name: logrotate-es
-      image: blacklabelops/logrotat
+      image: blacklabelops/logrotate
       resources:
         limits:
           memory: '128Mi'
-          cpu: '500me'
+          cpu: '200m'
       env:
         - name: LOGROTATE_SIZE
           value: 10M
