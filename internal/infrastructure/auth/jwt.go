@@ -6,7 +6,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
-	"github.com/pot-code/go-boilerplate/internal/user"
 )
 
 // AppTokenClaims .
@@ -77,12 +76,12 @@ func (ju *JWTUtil) Validate(tokenStr string) (*AppTokenClaims, error) {
 }
 
 // GenerateTokenStr generate user token from user model
-func (ju *JWTUtil) GenerateTokenStr(user *user.UserModel) (string, error) {
+func (ju *JWTUtil) GenerateTokenStr(id, email, username string) (string, error) {
 	expires := time.Now().Add(ju.timeout).Unix()
 	return ju.Sign(&AppTokenClaims{
-		UID:   user.ID,
-		Email: user.Email,
-		Name:  user.Username,
+		UID:   id,
+		Email: email,
+		Name:  username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expires,
 		},

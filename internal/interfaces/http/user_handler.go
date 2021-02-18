@@ -150,7 +150,7 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	repo.UpdateLogin(ctx, entity)
 
 	// issue JWT
-	tokenStr, err := ju.GenerateTokenStr(entity)
+	tokenStr, err := ju.GenerateTokenStr(entity.ID, entity.Email, entity.Username)
 	if err != nil {
 		return err
 	}
