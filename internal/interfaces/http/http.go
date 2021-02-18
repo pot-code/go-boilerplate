@@ -10,12 +10,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 	echo_middleware "github.com/labstack/echo/v4/middleware"
-	"github.com/pot-code/go-boilerplate/internal/domain"
 	infra "github.com/pot-code/go-boilerplate/internal/infrastructure"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
 	"github.com/pot-code/go-boilerplate/internal/interfaces/http/middleware"
+	"github.com/pot-code/go-boilerplate/internal/lesson"
+	timespent "github.com/pot-code/go-boilerplate/internal/time_spent"
+	"github.com/pot-code/go-boilerplate/internal/user"
 	"go.elastic.co/apm/module/apmechov4"
 	"go.uber.org/zap"
 )
@@ -25,10 +27,10 @@ func Serve(
 	conn driver.ITransactionalDB,
 	rdb driver.KeyValueDB,
 	option *infra.AppConfig,
-	UserUserCase domain.UserUseCase,
-	UserRepo domain.UserRepository,
-	LessonUseCase domain.LessonUseCase,
-	TimeSpentUseCase domain.TimeSpentUseCase,
+	UserUserCase user.UserUseCase,
+	UserRepo user.UserRepository,
+	LessonUseCase lesson.LessonUseCase,
+	TimeSpentUseCase timespent.TimeSpentUseCase,
 	logger *zap.Logger,
 ) {
 	var (

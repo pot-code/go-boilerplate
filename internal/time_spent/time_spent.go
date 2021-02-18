@@ -1,8 +1,10 @@
-package domain
+package timespent
 
 import (
 	"context"
 	"time"
+
+	"github.com/pot-code/go-boilerplate/internal/user"
 )
 
 type TimeSpentModel struct {
@@ -18,9 +20,9 @@ type TimeSpentModel struct {
 }
 
 type TimeSpentRepository interface {
-	GetTimeSpentInWeekByUser(ctx context.Context, user *UserModel, at *time.Time) ([]*TimeSpentModel, error)
+	GetTimeSpentInWeekByUser(ctx context.Context, user *user.UserModel, at *time.Time) ([]*TimeSpentModel, error)
 }
 
 type TimeSpentUseCase interface {
-	GetUserTimeSpent(ctx context.Context, user *UserModel, until *time.Time) ([]*TimeSpentModel, error)
+	GetUserTimeSpent(ctx context.Context, user *user.UserModel, until *time.Time) ([]*TimeSpentModel, error)
 }

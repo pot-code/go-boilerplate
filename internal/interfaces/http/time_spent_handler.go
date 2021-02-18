@@ -6,19 +6,20 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/pot-code/go-boilerplate/internal/domain"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
+	timespent "github.com/pot-code/go-boilerplate/internal/time_spent"
+	"github.com/pot-code/go-boilerplate/internal/user"
 )
 
 type TimeSpentHandler struct {
-	timeSpentUseCase domain.TimeSpentUseCase
+	timeSpentUseCase timespent.TimeSpentUseCase
 	validator        validate.Validator
 	jwtUtil          *auth.JWTUtil
 }
 
 func NewTimeSpentHandler(
-	TimeSpentUseCase domain.TimeSpentUseCase,
+	TimeSpentUseCase timespent.TimeSpentUseCase,
 	JWTUtil *auth.JWTUtil,
 	Validator validate.Validator,
 ) *TimeSpentHandler {
@@ -31,7 +32,7 @@ func (tsh *TimeSpentHandler) HandleGetTimeSpent(c echo.Context) (err error) {
 	ju := tsh.jwtUtil
 	ts := c.QueryParam("ts")
 	claims := ju.GetContextToken(c)
-	user := new(domain.UserModel)
+	user := new(user.UserModel)
 	user.ID = claims.UID
 
 	// validation

@@ -9,7 +9,7 @@ import (
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/uuid"
 	ihttp "github.com/pot-code/go-boilerplate/internal/interfaces/http"
 	"github.com/pot-code/go-boilerplate/internal/lesson"
-	"github.com/pot-code/go-boilerplate/internal/time_spent"
+	timespent "github.com/pot-code/go-boilerplate/internal/time_spent"
 	"github.com/pot-code/go-boilerplate/internal/user"
 	"go.uber.org/zap"
 )
@@ -67,8 +67,8 @@ func main() {
 	LessonRepo := lesson.NewLessonRepository(dbConn)
 	LessonUseCase := lesson.NewLessonUseCase(LessonRepo)
 
-	TimeSpentRepo := time_spent.NewTimeSpentRepository(dbConn)
-	TimeSpentUseCase := time_spent.NewTimeSpentUseCase(TimeSpentRepo)
+	TimeSpentRepo := timespent.NewTimeSpentRepository(dbConn)
+	TimeSpentUseCase := timespent.NewTimeSpentUseCase(TimeSpentRepo)
 
 	ihttp.Serve(dbConn, rdb, option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
 }

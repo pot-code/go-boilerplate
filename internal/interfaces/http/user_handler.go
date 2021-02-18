@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/pot-code/go-boilerplate/internal/domain"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
+	"github.com/pot-code/go-boilerplate/internal/user"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,9 +25,9 @@ var (
 type UserHandler struct {
 	jwtUtil        *auth.JWTUtil
 	conn           driver.ITransactionalDB
-	userRepository domain.UserRepository
+	userRepository user.UserRepository
 	kvStore        driver.KeyValueDB
-	userUseCase    domain.UserUseCase
+	userUseCase    user.UserUseCase
 	validator      validate.Validator
 	maximumRetry   int
 	retryTimeout   time.Duration
@@ -38,8 +38,8 @@ type UserLoginModel struct {
 	Password string `json:"password" validate:"required,min=6"`
 }
 
-func (ulm *UserLoginModel) ToDomain() *domain.UserModel {
-	return &domain.UserModel{
+func (ulm *UserLoginModel) ToDomain() *user.UserModel {
+	return &user.UserModel{
 		Username: ulm.Username,
 		Password: ulm.Password,
 	}
@@ -50,8 +50,8 @@ type UserCheckModel struct {
 	Email    string `json:"email" validate:"omitempty,email"`
 }
 
-func (ucm *UserCheckModel) ToDomain() *domain.UserModel {
-	return &domain.UserModel{
+func (ucm *UserCheckModel) ToDomain() *user.UserModel {
+	return &user.UserModel{
 		Username: ucm.Username,
 		Email:    ucm.Email,
 	}
@@ -63,8 +63,8 @@ type UserSignUpModel struct {
 	Password string `json:"password" validate:"required,min=6"`
 }
 
-func (usm *UserSignUpModel) ToDomain() *domain.UserModel {
-	return &domain.UserModel{
+func (usm *UserSignUpModel) ToDomain() *user.UserModel {
+	return &user.UserModel{
 		Username: usm.Username,
 		Email:    usm.Email,
 		Password: usm.Password,
@@ -75,9 +75,9 @@ func (usm *UserSignUpModel) ToDomain() *domain.UserModel {
 func NewUserHandler(
 	JWTUtil *auth.JWTUtil,
 	conn driver.ITransactionalDB,
-	UserRepository domain.UserRepository,
+	UserRepository user.UserRepository,
 	KVStore driver.KeyValueDB,
-	UserUseCase domain.UserUseCase,
+	UserUseCase user.UserUseCase,
 	MaximumRetry int,
 	RetryTimeout time.Duration,
 	Validator validate.Validator,
@@ -115,29 +115,29 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	defer tx.Commit(ctx)
 
 	// find user
-	user, err := repo.FindByCredential(ctx, post.ToDomain())
+	entity, err := repo.FindByCredential(ctx, post.ToDomain())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError,
 			NewRESTStandardError(http.StatusInternalServerError, err.Error()))
 	}
-	if user == nil {
+	if entity == nil {
 		return c.JSON(http.StatusUnauthorized, NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
 	}
 	now := time.Now().Unix() // seconds
-	if user.LoginRetry >= uh.maximumRetry && now-user.LastLogin < int64(uh.retryTimeout.Seconds()) {
+	if entity.LoginRetry >= uh.maximumRetry && now-entity.LastLogin < int64(uh.retryTimeout.Seconds()) {
 		return c.JSON(http.StatusForbidden, NewRESTStandardError(http.StatusForbidden, ErrUserTooManyRetry.Error()))
 	}
 
 	// check credentials
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(post.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(entity.Password), []byte(post.Password)); err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
-			if user.LoginRetry == uh.maximumRetry {
-				user.LoginRetry = 1
+			if entity.LoginRetry == uh.maximumRetry {
+				entity.LoginRetry = 1
 			} else {
-				user.LoginRetry++
+				entity.LoginRetry++
 			}
-			user.LastLogin = now
-			repo.UpdateLogin(ctx, user)
+			entity.LastLogin = now
+			repo.UpdateLogin(ctx, entity)
 			return c.JSON(http.StatusUnauthorized, NewRESTStandardError(http.StatusUnauthorized, ErrNoSuchUser.Error()))
 		}
 		return c.JSON(http.StatusInternalServerError,
@@ -145,12 +145,12 @@ func (uh *UserHandler) HandleSignIn(c echo.Context) (err error) {
 	}
 
 	// reset retry number
-	user.LoginRetry = 0
-	user.LastLogin = now
-	repo.UpdateLogin(ctx, user)
+	entity.LoginRetry = 0
+	entity.LastLogin = now
+	repo.UpdateLogin(ctx, entity)
 
 	// issue JWT
-	tokenStr, err := ju.GenerateTokenStr(user)
+	tokenStr, err := ju.GenerateTokenStr(entity)
 	if err != nil {
 		return err
 	}
@@ -185,11 +185,11 @@ func (uh *UserHandler) HandleSignUp(c echo.Context) (err error) {
 	}
 
 	// register
-	user := post.ToDomain()
-	user.LastLogin = time.Now().Unix()
-	_, err = UserUseCase.SignUp(ctx, user)
+	entity := post.ToDomain()
+	entity.LastLogin = time.Now().Unix()
+	_, err = UserUseCase.SignUp(ctx, entity)
 	if err != nil {
-		if errors.Is(err, domain.ErrDuplicatedUser) {
+		if errors.Is(err, user.ErrDuplicatedUser) {
 			return c.JSON(http.StatusConflict, NewRESTStandardError(http.StatusConflict, err.Error()))
 		}
 		return err

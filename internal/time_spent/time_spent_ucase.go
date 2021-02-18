@@ -1,32 +1,32 @@
-package time_spent
+package timespent
 
 import (
 	"context"
 	"time"
 
-	"github.com/pot-code/go-boilerplate/internal/domain"
+	"github.com/pot-code/go-boilerplate/internal/user"
 	"go.elastic.co/apm"
 )
 
-// TimeSpentUseCase ...
-type TimeSpentUseCase struct {
-	TimeSpentRepository domain.TimeSpentRepository
+// TimeSpentUseCaseImpl ...
+type TimeSpentUseCaseImpl struct {
+	TimeSpentRepository TimeSpentRepository
 }
 
-var _ domain.TimeSpentUseCase = &TimeSpentUseCase{}
+var _ TimeSpentUseCase = &TimeSpentUseCaseImpl{}
 
 // NewTimeSpentUseCase ...
 func NewTimeSpentUseCase(
-	TimeSpentRepository domain.TimeSpentRepository,
-) *TimeSpentUseCase {
-	return &TimeSpentUseCase{TimeSpentRepository}
+	TimeSpentRepository TimeSpentRepository,
+) *TimeSpentUseCaseImpl {
+	return &TimeSpentUseCaseImpl{TimeSpentRepository}
 }
 
 // GetUserTimeSpent get times spent on learning
 //
 // ts must be in RFC3339 layout
-func (tsu *TimeSpentUseCase) GetUserTimeSpent(ctx context.Context, user *domain.UserModel, at *time.Time) ([]*domain.TimeSpentModel, error) {
-	apmSpan, _ := apm.StartSpan(ctx, "TimeSpentUseCase.GetUserTimeSpent", "service")
+func (tsu *TimeSpentUseCaseImpl) GetUserTimeSpent(ctx context.Context, user *user.UserModel, at *time.Time) ([]*TimeSpentModel, error) {
+	apmSpan, _ := apm.StartSpan(ctx, "TimeSpentUseCaseImpl.GetUserTimeSpent", "service")
 	defer apmSpan.End()
 
 	timeSpent, err := tsu.TimeSpentRepository.GetTimeSpentInWeekByUser(ctx, user, at)

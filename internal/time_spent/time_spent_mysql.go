@@ -1,26 +1,26 @@
-package time_spent
+package timespent
 
 import (
 	"context"
 	"time"
 
-	"github.com/pot-code/go-boilerplate/internal/domain"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
+	"github.com/pot-code/go-boilerplate/internal/user"
 )
 
-type TimeSpentRepository struct {
+type TimeSpentMySQL struct {
 	Conn driver.ITransactionalDB `dep:""`
 }
 
-var _ domain.TimeSpentRepository = &TimeSpentRepository{}
+var _ TimeSpentRepository = &TimeSpentMySQL{}
 
-func NewTimeSpentRepository(Conn driver.ITransactionalDB) *TimeSpentRepository {
-	return &TimeSpentRepository{
+func NewTimeSpentRepository(Conn driver.ITransactionalDB) *TimeSpentMySQL {
+	return &TimeSpentMySQL{
 		Conn: Conn,
 	}
 }
 
-func (repo *TimeSpentRepository) GetTimeSpentInWeekByUser(ctx context.Context, user *domain.UserModel, at *time.Time) ([]*domain.TimeSpentModel, error) {
+func (repo *TimeSpentMySQL) GetTimeSpentInWeekByUser(ctx context.Context, user *user.UserModel, at *time.Time) ([]*TimeSpentModel, error) {
 	conn := repo.Conn
 	rows, err := conn.QueryContext(ctx, `
 SELECT 
@@ -43,9 +43,9 @@ ORDER BY ts ASC;
 	}
 	defer rows.Close()
 
-	var result []*domain.TimeSpentModel
+	var result []*TimeSpentModel
 	for rows.Next() {
-		item := new(domain.TimeSpentModel)
+		item := new(TimeSpentModel)
 		err := rows.Scan(&item.Weekday, &item.Vocabulary, &item.Grammar, &item.Listening, &item.Writing, &item.TS)
 		if err != nil {
 			return nil, err

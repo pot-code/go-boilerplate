@@ -3,23 +3,23 @@ package lesson
 import (
 	"context"
 
-	"github.com/pot-code/go-boilerplate/internal/domain"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
+	"github.com/pot-code/go-boilerplate/internal/user"
 )
 
-type LessonRepository struct {
+type LessonMySQL struct {
 	Conn driver.ITransactionalDB `dep:""`
 }
 
-var _ domain.LessonRepository = &LessonRepository{}
+var _ LessonRepository = &LessonMySQL{}
 
-func NewLessonRepository(Conn driver.ITransactionalDB) *LessonRepository {
-	return &LessonRepository{
+func NewLessonRepository(Conn driver.ITransactionalDB) *LessonMySQL {
+	return &LessonMySQL{
 		Conn: Conn,
 	}
 }
 
-func (repo *LessonRepository) GetLessonProgressByUser(ctx context.Context, user *domain.UserModel) ([]*domain.LessonProgressModel, error) {
+func (repo *LessonMySQL) GetLessonProgressByUser(ctx context.Context, user *user.UserModel) ([]*LessonProgressModel, error) {
 	conn := repo.Conn
 	rows, err := conn.QueryContext(ctx, `
 SELECT 
@@ -36,9 +36,9 @@ WHERE
 	}
 	defer rows.Close()
 
-	var result []*domain.LessonProgressModel
+	var result []*LessonProgressModel
 	for rows.Next() {
-		item := new(domain.LessonProgressModel)
+		item := new(LessonProgressModel)
 		err := rows.Scan(&item.ID, &item.Index, &item.Title, &item.Progress, &item.CreatedAt)
 		if err != nil {
 			return nil, err

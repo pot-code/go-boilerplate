@@ -3,27 +3,27 @@ package lesson
 import (
 	"context"
 
-	"github.com/pot-code/go-boilerplate/internal/domain"
+	"github.com/pot-code/go-boilerplate/internal/user"
 	"go.elastic.co/apm"
 )
 
-// LessonUseCase ...
-type LessonUseCase struct {
-	LessonRepository domain.LessonRepository
+// LessonUseCaseImpl ...
+type LessonUseCaseImpl struct {
+	LessonRepository LessonRepository
 }
 
-var _ domain.LessonUseCase = &LessonUseCase{}
+var _ LessonUseCase = &LessonUseCaseImpl{}
 
 // NewLessonUseCase ...
 func NewLessonUseCase(
-	LessonRepository domain.LessonRepository,
-) *LessonUseCase {
-	return &LessonUseCase{LessonRepository}
+	LessonRepository LessonRepository,
+) *LessonUseCaseImpl {
+	return &LessonUseCaseImpl{LessonRepository}
 }
 
 // GetUserLessonProgress get learning progress for each lesson
-func (lu *LessonUseCase) GetUserLessonProgress(ctx context.Context, user *domain.UserModel) ([]*domain.LessonProgressModel, error) {
-	apmSpan, _ := apm.StartSpan(ctx, "LessonUseCase.GetUserLessonProgress", "service")
+func (lu *LessonUseCaseImpl) GetUserLessonProgress(ctx context.Context, user *user.UserModel) ([]*LessonProgressModel, error) {
+	apmSpan, _ := apm.StartSpan(ctx, "LessonUseCaseImpl.GetUserLessonProgress", "service")
 	defer apmSpan.End()
 
 	progress, err := lu.LessonRepository.GetLessonProgressByUser(ctx, user)
