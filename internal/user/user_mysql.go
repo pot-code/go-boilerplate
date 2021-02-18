@@ -64,10 +64,9 @@ func (repo *UserRepository) SaveUser(ctx context.Context, post *domain.UserModel
 func (repo *UserRepository) UpdateLogin(ctx context.Context, post *domain.UserModel) error {
 	conn := repo.Conn
 	_, err := conn.ExecContext(ctx, `UPDATE user
-	SET email=?,
-			login_retry=?,
+	SET login_retry=?,
 			last_login=?
-	WHERE id = ?;`, post.Email, post.LoginRetry, post.LastLogin, post.ID)
+	WHERE id = ?;`, post.LoginRetry, post.LastLogin, post.ID)
 	return err
 }
 

@@ -20,25 +20,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type endpoint struct {
-	apiVersion  string
-	middlewares []echo.MiddlewareFunc
-	groups      []*apiGroup
-}
-
-type apiGroup struct {
-	prefix      string
-	middlewares []echo.MiddlewareFunc
-	routes      []*route
-}
-
-type route struct {
-	method      string
-	path        string
-	handler     echo.HandlerFunc
-	middlewares []echo.MiddlewareFunc
-}
-
 // Serve create http transport server
 func Serve(
 	conn driver.ITransactionalDB,
@@ -50,19 +31,21 @@ func Serve(
 	TimeSpentUseCase domain.TimeSpentUseCase,
 	logger *zap.Logger,
 ) {
-	app := echo.New()
-	jwtUtil := auth.NewJWTUtil(option.Security.JWTMethod,
-		option.Security.JWTSecret,
-		option.Security.TokenName,
-		option.SessionTimeout)
-	validator := validate.NewValidator()
-	websocket := infra.NewWebsocket()
-	jwtMiddleware := middleware.VerifyToken(jwtUtil, &middleware.ValidateTokenOption{
-		InBlackList: func(token string) (bool, error) {
-			return rdb.Exists(token)
-		},
-	})
-	refreshMiddleware := middleware.RefreshToken(jwtUtil)
+	var (
+		app       = echo.New()
+		validator = validate.NewValidator()
+		websocket = infra.NewWebsocket()
+		jwtUtil   = auth.NewJWTUtil(option.Security.JWTMethod,
+			option.Security.JWTSecret,
+			option.Security.TokenName,
+			option.SessionTimeout)
+		jwtMiddleware = middleware.VerifyToken(jwtUtil, &middleware.ValidateTokenOption{
+			InBlackList: func(token string) (bool, error) {
+				return rdb.Exists(token)
+			},
+		})
+		refreshMiddleware = middleware.RefreshToken(jwtUtil)
+	)
 
 	registerLivenessProbe(app, conn, rdb)
 	if option.Env == infra.EnvDevelopment {
@@ -96,22 +79,53 @@ func Serve(
 		Timeout: option.RequestTimeout,
 	}))
 
-	UserHandler := NewUserHandler(
-		jwtUtil, conn, UserRepo, rdb, UserUserCase,
-		option.Security.MaxLoginAttempts,
-		option.Security.RetryTimeout,
-		validator,
+	var (
+		UserHandler = NewUserHandler(
+			jwtUtil, conn, UserRepo, rdb, UserUserCase,
+			option.Security.MaxLoginAttempts,
+			option.Security.RetryTimeout,
+			validator,
+		)
+		LessonHandler    = NewLessonHandler(LessonUseCase, jwtUtil)
+		TimeSpentHandler = NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
 	)
-	LessonHandler := NewLessonHandler(LessonUseCase, jwtUtil)
-	TimeSpentHandler := NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
 
-	createEndpoint(app, v1Endpoint(
-		websocket,
-		UserHandler,
-		LessonHandler,
-		TimeSpentHandler,
-		jwtMiddleware, refreshMiddleware, echo_middleware.RequestID(), middleware.SetTraceLogger(logger),
-	))
+	createEndpoint(app,
+		&endpoint{
+			apiVersion:  "api/v1",
+			middlewares: []echo.MiddlewareFunc{echo_middleware.RequestID(), middleware.SetTraceLogger(logger)},
+			groups: []*apiGroup{
+				{
+					prefix: "/user",
+					routes: []*route{
+						{"POST", "/login", UserHandler.HandleSignIn, nil},
+						{"PUT", "/sign-out", UserHandler.HandleSignOut, nil},
+						{"POST", "/sign-up", UserHandler.HandleSignUp, nil},
+						{"GET", "/exists", UserHandler.HandleUserExists, nil},
+					},
+				},
+				{
+					prefix:      "/lesson",
+					middlewares: []echo.MiddlewareFunc{jwtMiddleware, refreshMiddleware},
+					routes: []*route{
+						{"GET", "/progress", LessonHandler.HandleGetLessonProgress, nil},
+					},
+				},
+				{
+					prefix:      "/time-spent",
+					middlewares: []echo.MiddlewareFunc{jwtMiddleware, refreshMiddleware},
+					routes: []*route{
+						{"GET", "/", TimeSpentHandler.HandleGetTimeSpent, nil},
+					},
+				},
+				{
+					prefix: "/ws",
+					routes: []*route{
+						{"GET", "/echo", websocket.WithHeartbeat(HandleEcho), nil},
+					},
+				},
+			},
+		})
 
 	printRoutes(app, logger)
 	if err := app.Start(fmt.Sprintf("%s:%d", option.Host, option.Port)); err != nil {
@@ -119,12 +133,29 @@ func Serve(
 	}
 }
 
+type endpoint struct {
+	apiVersion  string
+	middlewares []echo.MiddlewareFunc
+	groups      []*apiGroup
+}
+
+type apiGroup struct {
+	prefix      string
+	middlewares []echo.MiddlewareFunc
+	routes      []*route
+}
+
+type route struct {
+	method      string
+	path        string
+	handler     echo.HandlerFunc
+	middlewares []echo.MiddlewareFunc
+}
+
 func printRoutes(app *echo.Echo, logger *zap.Logger) {
 	for _, route := range app.Routes() {
 		if !strings.HasPrefix(route.Name, "github.com/labstack/echo") {
-			name := route.Name
-			trimIndex := strings.LastIndexByte(name, '/')
-			logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path), zap.String("name", string(name[trimIndex+1:])))
+			logger.Debug("Registered route", zap.String("method", route.Method), zap.String("path", route.Path))
 		}
 	}
 }
