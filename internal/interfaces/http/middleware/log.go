@@ -46,7 +46,7 @@ func Logging(base *zap.Logger, options ...*LoggingConfig) echo.MiddlewareFunc {
 				)
 			}
 			code := c.Response().Status
-			logger.Info(http.StatusText(code), zap.Int("http.response.status_code", code))
+			logger.Debug(http.StatusText(code), zap.Int("http.response.status_code", code))
 			return err
 		}
 	}

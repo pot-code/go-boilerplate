@@ -50,15 +50,16 @@ func Serve(
 	registerLivenessProbe(app, conn, rdb)
 	if option.Env == infra.EnvDevelopment {
 		registerProfileEndpoints(app)
+
+		app.Use(middleware.Logging(logger, &middleware.LoggingConfig{
+			Skipper: func(e echo.Context) bool {
+				if strings.HasPrefix(e.Request().RequestURI, "/healthz") {
+					return true
+				}
+				return false
+			},
+		}))
 	}
-	app.Use(middleware.Logging(logger, &middleware.LoggingConfig{
-		Skipper: func(e echo.Context) bool {
-			if strings.HasPrefix(e.Request().RequestURI, "/healthz") {
-				return true
-			}
-			return false
-		},
-	}))
 	app.Use(middleware.ErrorHandling(
 		&middleware.ErrorHandlingOption{
 			Handler: func(c echo.Context, err error) {
