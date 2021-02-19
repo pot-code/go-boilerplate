@@ -1,6 +1,6 @@
 # About
 
-A demo to show how to develope a golang App using go-clean-arch with k8s toolkit.
+A demo to show how to develop a golang App regarding the go-clean-arch philosophy, then deploy it with the k8s toolchain.
 
 # Usage
 
@@ -8,11 +8,11 @@ A demo to show how to develope a golang App using go-clean-arch with k8s toolkit
 
 - Modify the `hostAliases` section in both k8s-pod.yaml and k8s-metrics.yaml, replace the `ip` field with the actual value on your machine.
 - Run Elasticsearch and Kibana (you may need to install them first).
-- Start docker engine.
-- Start minikube.
-- Create secrets.
-- Choose a dev tool to start App
-- Create database using scripts under config/sql
+- Start the docker engine.
+- Start the minikube.
+- Create the secrets needed by your app.
+- Choose a dev tool to start.
+- Populate the database by using the scripts under `config/migrate`
 
 ### Create secrets
 
@@ -25,11 +25,11 @@ kubectl create secret generic go-boilerplate-secret \
 
 ## Tilt
 
-It will read the `Tiltfile` file in current directory and bring up the pods accordingly.
+It reads the `Tiltfile` file in the current directory and brings up the services accordingly.
 
 Run `tilt up`
 
->You may install it by `curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash`
+>installation: `curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash`
 
 ### Teardown
 
@@ -37,11 +37,11 @@ Run `tilt up`
 $ tilt down
 ```
 
-The command will trigger Tilt to delete any k8s resource it created before.
+The command will trigger the Tilt to delete any k8s resources it allocated before.
 
 ## Skaffold
 
-The same with tilt but with remote debug support.
+The same with the Tilt but with the remote debugging support.
 
 dev:
 
@@ -55,20 +55,20 @@ debug:
 $ skaffold debug --port-forward
 ```
 
-It will read the k8s service definitions and automatically forward the port for you, add your own port-forward rules in `skaffold.yaml`.
+It reads the service definitions and automatically forwards the ports defined in the `portForward` section. Add your own port-forward rules if necessary.
 
 ### Teardown
 
-Automatically clean resources upon exit
+It automatically cleans the resources upon exit
 
 # Monitor
 
 ## Metrics
 
-It's not enabled by default, to enable it, you may run:
+It's not enabled by default, to enable it, please run:
 
 ```shell
 $ kubectl apply -f k8s-metrics.yaml
 ```
 
-Now you can view the metrics data in Kibana dashboard
+Now you can check the metrics data in the Kibana dashboard.
