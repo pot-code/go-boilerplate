@@ -7,7 +7,7 @@ import (
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/logging"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/uuid"
-	ihttp "github.com/pot-code/go-boilerplate/internal/interfaces/http"
+	"github.com/pot-code/go-boilerplate/internal/interfaces/rest"
 	"github.com/pot-code/go-boilerplate/internal/lesson"
 	timespent "github.com/pot-code/go-boilerplate/internal/time_spent"
 	"github.com/pot-code/go-boilerplate/internal/user"
@@ -70,5 +70,5 @@ func main() {
 	TimeSpentRepo := timespent.NewTimeSpentRepository(dbConn)
 	TimeSpentUseCase := timespent.NewTimeSpentUseCase(TimeSpentRepo)
 
-	ihttp.Serve(dbConn, rdb, option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
+	rest.Serve(dbConn, rdb, option, UserUserCase, UserRepo, LessonUseCase, TimeSpentUseCase, logger)
 }

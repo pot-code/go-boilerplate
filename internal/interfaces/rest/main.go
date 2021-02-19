@@ -1,4 +1,4 @@
-package http
+package rest
 
 import (
 	"expvar"
@@ -14,7 +14,8 @@ import (
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/auth"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/driver"
 	"github.com/pot-code/go-boilerplate/internal/infrastructure/validate"
-	"github.com/pot-code/go-boilerplate/internal/interfaces/http/middleware"
+	"github.com/pot-code/go-boilerplate/internal/interfaces/rest/handler"
+	"github.com/pot-code/go-boilerplate/internal/interfaces/rest/middleware"
 	"github.com/pot-code/go-boilerplate/internal/lesson"
 	timespent "github.com/pot-code/go-boilerplate/internal/time_spent"
 	"github.com/pot-code/go-boilerplate/internal/user"
@@ -67,7 +68,7 @@ func Serve(
 			Handler: func(c echo.Context, err error) {
 				traceID := c.Response().Header().Get(echo.HeaderXRequestID)
 				c.JSON(http.StatusInternalServerError,
-					NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
+					handler.NewRESTStandardError(http.StatusInternalServerError, err.Error()).SetTraceID(traceID),
 				)
 				logger.Error(err.Error(), zap.String("trace.id", traceID))
 			},
@@ -83,14 +84,14 @@ func Serve(
 	}))
 
 	var (
-		UserHandler = NewUserHandler(
+		UserHandler = handler.NewUserHandler(
 			jwtUtil, conn, UserRepo, rdb, UserUserCase,
 			option.Security.MaxLoginAttempts,
 			option.Security.RetryTimeout,
 			validator,
 		)
-		LessonHandler    = NewLessonHandler(LessonUseCase, jwtUtil)
-		TimeSpentHandler = NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
+		LessonHandler    = handler.NewLessonHandler(LessonUseCase, jwtUtil)
+		TimeSpentHandler = handler.NewTimeSpentHandler(TimeSpentUseCase, jwtUtil, validator)
 	)
 
 	createEndpoint(app,
@@ -124,7 +125,7 @@ func Serve(
 				{
 					prefix: "/ws",
 					routes: []*route{
-						{"GET", "/echo", websocket.WithHeartbeat(HandleEcho), nil},
+						{"GET", "/echo", websocket.WithHeartbeat(handler.HandleEcho), nil},
 					},
 				},
 			},
