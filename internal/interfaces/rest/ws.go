@@ -1,4 +1,4 @@
-package infra
+package rest
 
 import (
 	"net/http"

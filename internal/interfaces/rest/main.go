@@ -37,7 +37,7 @@ func Serve(
 	var (
 		app       = echo.New()
 		validator = validate.NewValidator()
-		websocket = infra.NewWebsocket()
+		websocket = NewWebsocket()
 		jwtUtil   = auth.NewJWTUtil(option.Security.JWTMethod,
 			option.Security.JWTSecret,
 			option.Security.TokenName,
